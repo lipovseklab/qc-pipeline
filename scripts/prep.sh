@@ -8,7 +8,7 @@
 #$ -M user@example.com
 
 # wallclock time, 10 mins
-#$ -l h_rt=1:0:0
+#$ -l h_rt=0:10:0
 
 # RAM, 8G
 #$ -l mem=8G
