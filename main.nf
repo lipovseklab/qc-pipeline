@@ -2,7 +2,8 @@
 // cNMF pipeline: subset -> topometry -> prep -> factorize -> combine (+ k selection plot), one chain per samplesheet row.
 //   nextflow run main.nf -profile ucl_myriad --samplesheet samplesheet.csv --n_iters 200
 // Consensus (followed by the usage refit) is a separate step, run after inspecting the k selection plot; then --step analysis for the GEP analysis:
-//   nextflow run main.nf -profile ucl_myriad --step consensus --outdir results_20260929 --sample ctype_MEL --selected_k 40 --threshold 0.5
+//   nextflow run main.nf -profile ucl_myriad --step consensus --outdir results_20260929 --selected_k 40 --threshold 0.5
+// (--sample is only needed when --outdir holds more than one sample folder, i.e. subsets)
 
 nextflow.enable.dsl = 2
 
@@ -19,6 +20,11 @@ include { ANALYSIS  } from './modules/local/analysis/main'
 include { CLUSTER_COMPARE } from './modules/local/cluster_compare/main'
 include { CLUSTREE  } from './modules/local/clustree/main'
 
+// label for folders, file names and run names: runs of anything but letters, digits, '.', '_' and '-' become '_'
+def subsetLabel(subset) {
+    return subset.toString().replaceAll(/[^\w.-]+/, '_')
+}
+
 // nf-schema has already validated the samplesheet (assets/schema_input.json); this turns a row into a meta map.
 // samplesheetToList returns each row as a list in schema property order; empty cells may be null or [].
 def makeMeta(row) {
@@ -26,7 +32,9 @@ def makeMeta(row) {
 
     def counts_f = file(counts)
     def n_iters  = (n_iters_row ?: params.n_iters) as int      // from the row, else --n_iters (CLI values are strings)
-    def tag      = metadata ? "${metadata}_${subset}" : counts_f.baseName
+    // the subset value may contain spaces or other odd characters: the tag (folders, file names, run name) uses a safe label
+    def label    = subset ? subsetLabel(subset) : null
+    def tag      = metadata ? "${metadata}_${label}" : counts_f.baseName
     // k values from the row (space or ; separated), else the --k_vals default
     def k_vals   = (k_str ?: params.k_vals).toString().trim().split(/[\s;]+/).collect { it as int }
 
@@ -35,6 +43,7 @@ def makeMeta(row) {
         counts   : counts_f,
         metadata : metadata,
         subset   : subset,
+        label    : label,
         hvgs     : hvgs ? file(hvgs) : null,
         k_vals   : k_vals,
         run_name : run_name ?: "cnmf_${tag}_${params.run_date}",
@@ -61,8 +70,8 @@ def appendTraces() {
     if( lines.size() < 2 || tagCol < 0 ) return
     def rows = lines.tail()
     appendRows(file("${params.outdir}/pipeline_info/trace.txt"), lines[0], rows)
-    def tags = params.step != 'pipeline'    // only the pipeline step has a samplesheet; the others work on --sample
-        ? [params.sample]
+    def tags = params.step != 'pipeline'    // only the pipeline step loops over a samplesheet; the others work on one sample
+        ? [sampleName()]
         : samplesheetToList(params.samplesheet, "${projectDir}/assets/schema_input.json").collect { row -> makeMeta(row).tag }
     tags.each { tag ->
         appendRows(file("${params.outdir}/${tag}/pipeline_info/trace.txt"), lines[0],
@@ -81,6 +90,8 @@ workflow pipeline {
         .map { list ->
             def dup = list.countBy { it.run_name }.findAll { it.value > 1 }.keySet()
             if( dup ) error "Samplesheet rows give the same run name (set run_name to tell them apart): ${dup}"
+            def dupTag = list.countBy { it.tag }.findAll { it.value > 1 }.keySet()
+            if( dupTag ) error "Samplesheet rows give the same tag (same metadata and subset, or subset values that differ only in spaces or punctuation): ${dupTag}"
             list
         }
         .flatMap { it }
@@ -93,7 +104,7 @@ workflow pipeline {
     // rows with metadata + subset: subset -> topometry. These two only get the fields they use, not the whole
     // meta: it carries n_jobs / k_vals / run_name, and Nextflow hashes val inputs, so changing --n_iters or
     // --stride would otherwise invalidate their cache
-    SUBSET( rows.subsetting.map { m -> tuple([tag: m.tag, metadata: m.metadata, subset: m.subset], m.counts) } )
+    SUBSET( rows.subsetting.map { m -> tuple([tag: m.tag, metadata: m.metadata, subset: m.subset, label: m.label], m.counts) } )
     TOPOMETRY( SUBSET.out.res )
 
     // the full meta is joined back on the tag for prep
@@ -124,6 +135,16 @@ workflow pipeline {
     CLUSTREE( CLUSTER_COMPARE.out.table )
 }
 
+// the sample folder under --outdir: --sample, else the only folder there that PREP left a run name in
+def sampleName() {
+    if( params.sample ) return params.sample
+    def found = files("${params.outdir}/*/pipeline_info/run_name.txt").collect { it.parent.parent.name }.sort()
+    if( found.size() == 1 ) return found[0]
+    error found
+        ? "${params.outdir} holds ${found.size()} samples (${found.join(', ')}): give --sample"
+        : "No sample found in ${params.outdir} (no */pipeline_info/run_name.txt): check --outdir, or give --sample"
+}
+
 // the run name defaults to the one PREP recorded for this sample
 def runNameFor(sample) {
     def name_file = file("${params.outdir}/${sample}/pipeline_info/run_name.txt")
@@ -134,28 +155,42 @@ def runNameFor(sample) {
 }
 
 workflow consensus {
-    if( !params.sample || !params.selected_k )
-        error "Consensus needs --sample and --selected_k (and optionally --run_name, --threshold, --outdir)"
-    CONSENSUS( Channel.of(runNameFor(params.sample)) )
+    if( !params.selected_k )
+        error "Consensus needs --selected_k (and optionally --sample, --run_name, --threshold, --outdir)"
+    def sample = sampleName()
+    CONSENSUS( Channel.of(tuple(sample, runNameFor(sample))) )
     REFIT_USAGE( CONSENSUS.out.res )     // cNMF 1.7.1's own usages are wrong, see modules/local/refit_usage/main.nf
 }
 
 // the usage refit alone, for a sample whose consensus has already been run (needs the same --selected_k / --threshold)
 workflow refit_usage {
-    if( !params.sample || !params.selected_k )
-        error "The refit_usage step needs --sample and --selected_k (and the --threshold used for consensus)"
-    REFIT_USAGE( Channel.of(runNameFor(params.sample)) )
+    if( !params.selected_k )
+        error "The refit_usage step needs --selected_k (and the --threshold used for consensus)"
+    def sample = sampleName()
+    REFIT_USAGE( Channel.of(tuple(sample, runNameFor(sample))) )
 }
 
 // after consensus: GEP analysis for one sample (needs the same --selected_k / --threshold as the consensus step)
 workflow analysis {
-    if( !params.sample || !params.selected_k )
-        error "The analysis step needs --sample and --selected_k (and the --threshold used for consensus)"
-    def run_name = runNameFor(params.sample)
-    def sample_dir = "${params.outdir}/${params.sample}"
+    if( !params.selected_k )
+        error "The analysis step needs --selected_k (and the --threshold used for consensus)"
+    def sample     = sampleName()
+    def run_name   = runNameFor(sample)
+    def sample_dir = "${params.outdir}/${sample}"
+
+    // subset samples have a topometry AnnData; unsubset ones use their counts file from the samplesheet
+    def adata = file("${sample_dir}/anndatas/adata_topometry_${sample}.h5ad")
+    if( !adata.exists() ) {
+        if( !params.samplesheet )
+            error "No ${adata} (the sample was not subset): give --samplesheet to use the counts file of the '${sample}' row"
+        def m = samplesheetToList(params.samplesheet, "${projectDir}/assets/schema_input.json")
+            .collect { row -> makeMeta(row) }.find { it.tag == sample }
+        if( !m )
+            error "No row in ${params.samplesheet} gives the sample '${sample}'"
+        adata = m.counts
+    }
     ANALYSIS(
-        Channel.of( tuple(params.sample, run_name, file("${sample_dir}/anndatas/adata_topometry_${params.sample}.h5ad"),
-                          "${file(sample_dir).toAbsolutePath()}/${run_name}") ),
+        Channel.of( tuple(sample, run_name, adata, "${file(sample_dir).toAbsolutePath()}/${run_name}") ),
         file(params.gmt),
         file(params.collectri)
     )

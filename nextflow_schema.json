@@ -48,7 +48,7 @@
             "title": "Consensus options (-entry consensus)",
             "type": "object",
             "properties": {
-                "sample": { "type": ["string", "null"], "description": "Sample directory under outdir (the row tag, e.g. ctype_MEL)" },
+                "sample": { "type": ["string", "null"], "description": "Sample folder under outdir (the row tag, e.g. ctype_MEL). Only needed if outdir holds more than one sample; otherwise it is inferred" },
                 "run_name": { "type": ["string", "null"], "description": "Run name to build consensus for" },
                 "selected_k": { "type": ["integer", "string", "null"], "pattern": "^([2-9]|[1-9]\\d+)$", "minimum": 2, "description": "Chosen number of components (k)" },
                 "threshold": { "type": ["number", "string"], "pattern": "^\\d+(\\.\\d+)?$", "default": 2, "description": "Local density threshold" }
@@ -57,7 +57,7 @@
         "analysis_options": {
             "title": "Analysis options",
             "type": "object",
-            "description": "For --step analysis (after consensus). Also uses sample, run_name, selected_k and threshold.",
+            "description": "For --step analysis (after consensus). Also uses sample, run_name, selected_k and threshold. For a sample that was not subset (no topometry AnnData), --samplesheet gives the counts file to analyse.",
             "properties": {
                 "gmt": { "type": "string", "format": "file-path", "description": "GO biological process GMT (bin/fetch_resources.py)" },
                 "collectri": { "type": "string", "format": "file-path", "description": "CollecTRI network parquet (bin/fetch_resources.py)" },

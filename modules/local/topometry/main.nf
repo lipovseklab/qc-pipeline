@@ -15,8 +15,8 @@ process TOPOMETRY {
     tuple val(meta), path(adata)
 
     output:
-    tuple val(meta), path("counts_${meta.subset}.h5ad"), path("hvgs_${meta.subset}.csv"), emit: res
-    tuple val(meta), path("adata_topometry_${meta.subset}.h5ad"), emit: adata
+    tuple val(meta), path("counts_${meta.label}.h5ad"), path("hvgs_${meta.label}.csv"), emit: res
+    tuple val(meta), path("adata_topometry_${meta.label}.h5ad"), emit: adata
     path '*.png', optional: true
     path '*.pkl', optional: true
     path 'figures', optional: true
@@ -28,7 +28,7 @@ process TOPOMETRY {
     """
     /usr/bin/time --verbose topometry.py \\
         --adata ${adata} \\
-        --descriptor ${meta.subset} \\
+        --descriptor ${meta.label} \\
         --metadata ${meta.metadata}
     """
 }

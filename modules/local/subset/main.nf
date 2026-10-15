@@ -15,20 +15,24 @@ process SUBSET {
     path '.command.err', hidden: true, optional: true
 
     script:
+    // the subset value may hold spaces: single-quote it for the shell; the file name uses the tag (safe label)
+    def subset = "'" + meta.subset.toString().replace("'", "'\"'\"'") + "'"
     """
     subset.py \\
         --counts ${counts} \\
         --metadata ${meta.metadata} \\
-        --subset ${meta.subset} \\
+        --subset ${subset} \\
+        --label ${meta.label} \\
         --output-dir .
 
     # fail here rather than passing an empty AnnData to topometry
-    python - <<PY
+    python - ${meta.tag} ${meta.metadata} ${subset} ${counts} <<'PY'
     import anndata as ad, sys
-    a = ad.read_h5ad('adata_${meta.tag}.h5ad', backed='r')
-    print('subset ${meta.tag}:', a.shape)
+    tag, metadata, subset, counts = sys.argv[1:5]
+    a = ad.read_h5ad(f'adata_{tag}.h5ad', backed='r')
+    print(f'subset {tag}:', a.shape)
     if a.n_obs == 0:
-        sys.exit("Subset ${meta.metadata} == ${meta.subset} has 0 cells in ${counts}")
+        sys.exit(f"Subset {metadata} == {subset} has 0 cells in {counts}")
     PY
     """
 }
