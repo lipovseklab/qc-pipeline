@@ -48,7 +48,7 @@ One row per run (`samplesheet.csv`). The columns are checked against `assets/sch
 |---|---|---|
 | `counts` | yes | AnnData (`.h5ad`) with raw counts |
 | `metadata` | with `subset` | obs column to subset by, e.g. `ctype` |
-| `subset` | with `metadata` | value to keep, e.g. `MEL` |
+| `subset` | with `metadata` | value to keep, e.g. `MEL`. May contain spaces (no leading or trailing ones); folder, file and run names use it with runs of other characters replaced by `_` (`Hair cell` becomes `Hair_cell`) |
 | `k_vals` | no | components (k), space or `;` separated, e.g. `"20 30 40"`. Default: `--k_vals` |
 | `n_iters` | no | iterations per k, e.g. `200`. Default: `--n_iters` |
 | `hvgs` | if no `metadata`/`subset` | gene list, one per line |
@@ -61,7 +61,7 @@ anndatas/adata_ctype.h5ad,ctype,HC,"20 30 40 50",200,,
 anndatas/adata_raw.h5ad,,,"20 30",,hvgs.csv,
 ```
 
-- Rows with `metadata` and `subset`: the counts are subset (failing if the subset has 0 cells), topometry selects the HVGs, then prep onwards. `tag` is `{metadata}_{subset}`.
+- Rows with `metadata` and `subset`: the counts are subset (failing if the subset has 0 cells), topometry selects the HVGs, then prep onwards. `tag` is `{metadata}_{label}`, where the label is the subset value made safe as above. Two rows whose tags match are rejected.
 - Rows without: prep onwards, using the given `counts` and `hvgs`. `tag` is the counts file name.
 
 ### Run
@@ -112,7 +112,7 @@ Consensus is a separate step (`--step consensus`). Only one consensus step runs 
 nextflow run main.nf -profile ucl_myriad --step consensus --outdir results_20260929 --sample ctype_MEL --selected_k 40 --threshold 0.5
 ```
 
-The run name is read from `{outdir}/{sample}/pipeline_info/run_name.txt`; give `--run_name` to override it.
+`--sample` (the sample folder, i.e. the samplesheet row tag) is only needed when `{outdir}` holds more than one sample, e.g. several subsets; otherwise the one folder with a `pipeline_info/run_name.txt` is used, and the step stops with the list if there are several. This applies to `--step refit_usage` and `--step analysis` too. The run name is read from `{outdir}/{sample}/pipeline_info/run_name.txt`; give `--run_name` to override it.
 
 `--step consensus` is followed by a usage refit (`REFIT_USAGE`, `bin/refit_usage.py`, in the cNMF container). cNMF 1.7.1 ends `consensus` with a refit of the usages on the std-scaled TPM of the overdispersed genes (`refit_usage=True`), but it passes the spectra with their genes sorted alphabetically and the data in the overdispersed-gene order. The two are paired by position on different genes, so `*.usages.k_*.consensus.txt` is wrong: the usages do not follow each GEP's top genes (the spectra, gene scores and top genes are fine). `refit_usage.py` repeats the same step with cNMF's own `refit_usage` and settings, with both matrices in the same gene order, and writes `{run_name}.usages.k_{k}.dt_{threshold}.consensus.refit.txt` next to the cNMF files, which are left as they are. It prints how well each GEP's usage follows the mean expression of its top 10 genes (about 0.5 to 0.9 when it is right, about 0 for cNMF's own file).
 
@@ -135,6 +135,8 @@ singularity exec envs/cnmf-analysis.sif python bin/fetch_resources.py    # write
 ```bash
 nextflow run main.nf -profile ucl_myriad --step analysis --outdir results_20260929 --sample ctype_MEL --selected_k 40 --threshold 0.5 --clusters topo_clusters_ms_res0.6
 ```
+
+A sample that was not subset has no topometry AnnData, so also give `--samplesheet`: the analysis then uses the counts file of that sample's row.
 
 `--clusters` is the obs column with the cluster labels to use. Choose it from the clustree plot (`clustering/clustree.png`), e.g. `topo_clusters_ms_res0.6`; the default is the `clusters` column. It is used for the usage-by-cluster plots, the projection summary and the differential expression, and the run stops at the start with the list of clustering columns if the name is not in the AnnData.
 

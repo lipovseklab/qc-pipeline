@@ -26,6 +26,11 @@ def build_parser():
         	help="Subset of metadata to keep e.g. HC"
 		)
 	p.add_argument(
+		"--label",
+		default=None,
+		help="Name for the output file adata_{metadata}_{label}.h5ad (default: --subset)"
+	)
+	p.add_argument(
 		'--output-dir',
                 help="top-level directory for saving outputs"
 	)
@@ -50,7 +55,7 @@ def main():
 	adata = adata[adata.obs[args.metadata] == args.subset]
 
 	# write adata
-	adata.write(f'{outpath}/adata_{args.metadata}_{args.subset}.h5ad')
+	adata.write(f'{outpath}/adata_{args.metadata}_{args.label or args.subset}.h5ad')
 
 if __name__ == "__main__":
     main()

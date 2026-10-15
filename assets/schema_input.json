@@ -23,9 +23,9 @@
             },
             "subset": {
                 "type": "string",
-                "pattern": "^\\S+$",
-                "description": "Value of the metadata column to keep, e.g. MEL",
-                "errorMessage": "subset must be a single value with no spaces"
+                "pattern": "^\\S([^\\t\\r\\n]*\\S)?$",
+                "description": "Value of the metadata column to keep, e.g. MEL. May contain spaces; folders and file names use it with runs of other characters replaced by _",
+                "errorMessage": "subset must be a single value with no leading or trailing spaces, tabs or line breaks"
             },
             "k_vals": {
                 "type": "string",

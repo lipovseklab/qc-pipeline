@@ -130,7 +130,7 @@ def main():
 
     with stage('log-normalised expression'):
         # raw counts of all genes -> genes found in >= 3 cells (as for cNMF) -> normalise -> log1p, no scaling
-        logn = adata.raw.to_adata()
+        logn = adata.raw.to_adata() if adata.raw is not None else adata.copy()   # no .raw (unsubset sample): X holds the raw counts
         logn.uns.pop('log1p', None)       # the counts are not log-transformed; drop the flag copied from adata
         sc.pp.filter_genes(logn, min_cells=3)
         sc.pp.normalize_total(logn, target_sum=args.target_sum)
