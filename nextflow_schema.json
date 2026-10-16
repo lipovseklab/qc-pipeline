@@ -68,7 +68,8 @@
                 "usage_cutoff": { "type": ["number", "string"], "pattern": "^\\d+(\\.\\d+)?$", "default": 0.1, "description": "Usage above which a cell counts as using a GEP" },
                 "n_top_genes": { "type": ["integer", "string"], "pattern": "^[1-9]\\d*$", "default": 100, "description": "Top genes saved per GEP" },
                 "geps_per_page": { "type": ["integer", "string"], "pattern": "^\\d+$", "default": 6, "description": "GEPs per page in the multi-GEP figures (0 = one page)" },
-                "formats": { "type": "string", "default": "png,pdf", "description": "Figure formats, comma separated" }
+                "formats": { "type": "string", "default": "png,pdf", "description": "Figure formats, comma separated" },
+                "analysis_dir": { "type": "string", "default": "analysis", "description": "Output folder name inside the sample folder (for a second analysis of the same sample, e.g. with other --clusters)" }
             }
         },
         "institutional_config_options": {

@@ -1,9 +1,9 @@
 // Downstream GEP analysis of one sample after consensus: merges the GEP usages into the AnnData, top genes,
-// GOBP + CollecTRI enrichment, and the figures. Writes <outdir>/<sample>/analysis/{csvs,excel,figures,anndatas}.
+// GOBP + CollecTRI enrichment, and the figures. Writes <outdir>/<sample>/<analysis_dir>/{csvs,excel,figures,anndatas}.
 process ANALYSIS {
     container "${projectDir}/envs/cnmf-analysis.sif"
     tag "${sample}"
-    publishDir { "${params.outdir}/${sample}" }, pattern: 'analysis', mode: 'copy'
+    publishDir { "${params.outdir}/${sample}" }, pattern: "${params.analysis_dir}", mode: 'copy'
     publishDir { "${params.outdir}/${sample}/logs" }, pattern: '.command.{out,err}', mode: 'copy',
         saveAs: { fn -> "${task.process}${fn.replace('.command', '')}" }
 
@@ -13,7 +13,7 @@ process ANALYSIS {
     path collectri
 
     output:
-    path 'analysis'
+    path "${params.analysis_dir}"
     path '.command.out', hidden: true, optional: true
     path '.command.err', hidden: true, optional: true
 
@@ -41,7 +41,7 @@ NXF_INFO
         --gmt ${gmt} \\
         --collectri ${collectri} \\
         --sample ${sample} \\
-        --out analysis \\
+        --out ${params.analysis_dir} \\
         --projection ${params.projection} \\
         --clusters ${params.clusters} \\
         --age ${params.age} \\
