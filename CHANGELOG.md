@@ -4,6 +4,11 @@
 
 ### `Added`
 
+- Provenance guard: the pipeline stops on uncommitted code unless `--allow_dirty true`, and every run writes
+  `pipeline_info/provenance.json` (commit, tag, command, settings, status, container sha256).
+- CI on pull requests: `nextflow lint` and nf-test stub runs (`.github/workflows/ci.yml`).
+- Stubs for the CellBender branch (`get_batches`, `split_adata`, `run_cellbender`, `join_adatas`,
+  `plot_barcode_rank`) and a stub test with `skip_cellbender: false`.
 - Restructured the pipeline into nf-core directory conventions: `main.nf`
   entry point, `workflows/qc_pipeline.nf` (named workflow), `workflows/outlier_removal.nf`
   (standalone second entry point), `modules/local/<name>/main.nf` (one process

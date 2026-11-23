@@ -15,6 +15,32 @@ nextflow_pipeline {
             assert workflow.success
             assert path("$outputDir/qc/anndatas/adata_doublets.h5ad").exists()
             assert path("$outputDir/outliers/anndatas/adata_final_filter_test.h5ad").exists()
+            def prov = path("$outputDir/pipeline_info/provenance.json").json
+            assert prov.status == 'completed'
+            assert prov.pipeline.commit
+            assert prov.dataset.name == 'test'
+        }
+    }
+
+    test("step qc with CellBender (stub)") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'qc'
+                datasets = [[
+                    name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                    celltype_csv: "${projectDir}/test/celltype_test.csv",
+                    skip_cellbender: false, skip_scSHC: true,
+                ]]
+            }
+        }
+        then {
+            assert workflow.success
+            assert path("$outputDir/qc/plots/cellcalling/plot_barcode_rank_plate.png").exists()
+            assert path("$outputDir/qc/reports/cellbender/cellbender_stub_batch_1_report.html").exists()
+            assert path("$outputDir/qc/reports/cellbender/cellbender_stub_batch_2_report.html").exists()
+            assert path("$outputDir/qc/anndatas/adata_doublets.h5ad").exists()
         }
     }
 
