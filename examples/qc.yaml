@@ -1,0 +1,12 @@
+# QC only: cell calling (optional) -> QC plots/stats -> minimal filter -> TopOMetry -> clustering -> doublets.
+# Run:  nextflow run lipovseklab/qc-pipeline -r <version> -profile <profile> -params-file qc.yaml
+step: qc
+outdir: results/2026-07-23_qc
+
+datasets:
+  - name: alldata
+    adata: /path/to/adata_raw_prob0.5.h5ad     # cell-called adata (skip_cellbender: true, the default)
+    celltype_csv: /path/to/celltype_markers.csv
+    batch: plate                               # default
+    sample: sample                             # default
+    skip_scSHC: true                           # scSHC needs ~128 GB

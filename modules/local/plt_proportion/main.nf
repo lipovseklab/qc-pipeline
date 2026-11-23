@@ -17,4 +17,8 @@ process plt_proportion {
     plt_proportion.py --adata ${adata} --batch ${batch} --descriptor ${descriptor}
     """
 
+    stub:
+    """
+    touch plt_proportion_stub_${descriptor}.png
+    """
 }

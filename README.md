@@ -7,96 +7,80 @@ QC pipeline for mouse utricle single-cell data: cell calling (CellBender),
 doublet detection (vaeda + scDblFinder), minimal filtering, dimensionality
 reduction (TopOMetry), clustering (scSHC + clustree) and outlier removal.
 
-This folder is laid out following nf-core directory conventions
-(`main.nf`, `workflows/`, `modules/local/<name>/main.nf`, `conf/*.config`,
-`nextflow_schema.json`), ported from the original flat pipeline in the
-parent `nextflow/` directory. `nf-core pipelines lint` has **not** been run
-against it (the nf-core CLI wasn't available when this was created) — treat
-the layout as lint-oriented, not lint-verified.
+Laid out following nf-core conventions (`main.nf`, `workflows/`, `modules/local/<name>/main.nf`, `conf/`,
+`nextflow_schema.json`). `nf-core pipelines lint` has not been run yet.
 
-## Two entry points
+## Running
 
-This repo contains two pipelines that share modules, not one pipeline with
-two modes, so they have two separate entry scripts:
+Everything about a run goes in **one file**, `run.yaml`; copy one of the examples and edit it:
 
-1. **`main.nf`** — the primary QC pipeline (cell calling → doublets →
-   minimal filter → TopOMetry → clustering). Run with:
+1. `cp examples/outliers.yaml run.yaml` (or `qc.yaml`, `all.yaml`)
+2. Edit `step`, `outdir` and the dataset entry. Only settings that differ from the defaults are needed.
+3. Run:
    ```bash
-   nextflow run main.nf -profile test
+   nextflow run lipovseklab/qc-pipeline -r <version> -profile ucl_myriad -params-file run.yaml
    ```
-2. **`workflows/outlier_removal.nf`** — takes the `adata_doublets.h5ad`
-   output of a previous `main.nf` run and removes outliers, re-running
-   TopOMetry/clustering on the filtered result. 
-   Run it directly:
-   ```bash
-   nextflow run workflows/outlier_removal.nf -profile alldata
-   nextflow run workflows/outlier_removal.nf -profile postnatal
-   ```
+
+`step` is one of:
+
+| step | does | input `adata` |
+|---|---|---|
+| `qc` | cell calling (optional) → QC plots/stats → minimal filter → TopOMetry → clustering → doublets | raw / cell-called adata |
+| `outliers` | MAD-based outlier removal per cluster → QC plots → filtering summary → TopOMetry → clustering | `qc/anndatas/adata_doublets.h5ad` from a qc run |
+| `all` | `qc`, then `outliers` on its output | raw / cell-called adata |
+
+Outputs go to `<outdir>/qc/...` and `<outdir>/outliers/...`.
+
+The run file is checked before anything starts: misspelt settings, wrong types (`skip_scSHC: "yes"`),
+missing required settings and missing input files all stop the run with a message saying what to fix.
+
+## Dataset settings
+
+One entry under `datasets:` (one dataset per run for now).
+
+| setting | needed for | default | meaning |
+|---|---|---|---|
+| `name` | all | — | short name, used in output file names (`alldata`) |
+| `adata` | all | — | input AnnData (see table above) |
+| `celltype_csv` | all | — | marker table for simple cell typing (format below) |
+| `batch` | all | `plate` | obs column with the batch |
+| `sample` | all | `sample` | obs column used to colour QC plots |
+| `skip_scSHC` | all | `false` | skip scSHC clustering (needs ~128 GB) |
+| `skip_cellbender` | qc | `true` | `adata` is already cell-called (see below) |
+| `cellbender_csv` | qc | — | per-batch CellBender settings: `batch, total_droplets_included, expected_cells` |
+| `clusters` | outliers, all | — | obs column with the clusters MADs are computed in, e.g. `topo_clusters_ms_res0.4` |
+| `doublet_column` | outliers, all | `scDblFinder_calls` | obs column with `doublet`/`singlet` calls |
+| `qc_stats` | outliers | — | the qc run's `qc/reports/stats` folder, so the filtering summary covers every stage |
+
+Run-wide settings: `outdir` (default `results`) and `container_dir` (folder with the `.sif` images; default
+`<pipeline>/containers`). The images are not in git; build them with `bin/helpers/setup-containers.sh`.
+
+**Cell calling.** CellBender runs here without GPU acceleration, so the default `skip_cellbender: true`
+expects an already **cell-called** `adata` (nuclei with `cell_probability < 0.5` removed), e.g. from a
+separate GPU CellBender run; no empty-droplet removal happens in this mode. With `skip_cellbender: false`,
+`adata` must be the fully unfiltered matrix.
+
+**`celltype_csv`** has **no header row**: column 1 is a cell-type label, the remaining columns are marker gene
+symbols (rows can differ in length; see `test/celltype_test.csv`). Markers not in `adata.var_names` are ignored,
+so check gene symbols match your naming.
 
 ## Requirements
 
 - [Nextflow](https://www.nextflow.io/) >= 24.10
-- [Apptainer/Singularity](https://apptainer.org/) — all processes run in
-  prebuilt containers (see `containers/`) which can be built as follows:
-  ```bash
-  bin/helpers/setup-containers.sh
-  ```
-
-## Parameters
-
-See `nextflow_schema.json` for the full parameter list. Key ones:
-
-| Param | Used by | Description |
-|---|---|---|
-| `raw_adata` | `main.nf` | Input AnnData for the QC pipeline |
-| `batch` | both | obs column with batch IDs |
-| `celltype_csv` | both | CSV for simple marker-based cell typing |
-| `metadata` | `main.nf` | obs column used for QC plot colouring |
-| `skip_cellbender` | `main.nf` | Skip CellBender (default: true) |
-| `skip_scSHC` | both | Skip scSHC clustering (memory intensive) |
-| `adata` | `outlier_removal.nf` | Doublet-called AnnData to filter |
-| `clusters`, `doublets`, `descriptor` | `outlier_removal.nf` | Outlier-detection inputs |
+- [Apptainer/Singularity](https://apptainer.org/) — all processes run in prebuilt containers.
 
 ## Profiles
 
-- `test` — small bundled test data (`test/adata_test.h5ad`), for `main.nf`.
-- `myriad` — UCL Myriad SGE cluster.
+Profiles hold machine settings only; dataset settings always go in `run.yaml`.
 
-## Running with `skip_cellbender = true` (default)
+- `test` — tiny bundled dataset (`test/`), step `all`; used by `nf-test`.
+- `ucl_myriad` — UCL Myriad SGE cluster.
 
-This workflow currently only runs Cellbender without GPU acceleration.
+## Testing
 
-As such, I recommend you run Cellbender separately first with GPU acceleration
-and use the `skip_cellbender` parameter to use your output in this pipeline.
-
-When `skip_cellbender` is `true`, `main.nf` skips cell calling entirely —
-the Cellbender/batch-splitting/joining processes never run, and `raw_adata`
-is used as-is as the starting point for QC. This means:
-
-- **`raw_adata`** must already be a *cell-called* AnnData (nuclei with `cell_probability < 0.5` already removed), not the fully unfiltered matrix — e.g. the
-  output of a Cellbender run done separately with GPU acceleration (see
-  above), or already filtered by your own thresholding. No empty-droplet
-  removal happens implicitly in this mode.
-- **`batch`** must name an existing column in `raw_adata.obs` (e.g. `"plate"`
-  in `conf/test.config`) — used to group cells for batch-aware QC
-  plots/reports and passed to `run_vaeda`/`run_scDblFinder` for batch-aware
-  doublet detection.
-- **`metadata`** must name an existing column in `raw_adata.obs` (e.g.
-  `"sample"` in `conf/test.config`) — used as the colouring/grouping
-  variable in QC plots and summary stats. Any numeric or categorical obs
-  column works.
-- **`celltype_csv`**, if provided, must be a CSV with **no header row**:
-  column 1 is a cell-type label, the remaining columns are marker gene
-  symbols for that type (rows can have different numbers of marker
-  columns — see `test/celltype_test.csv` for a real example). Marker genes
-  not found in `adata.var_names` are silently ignored, so check gene
-  symbols match your `.var_names` naming convention.
-
-If `skip_cellbender = false` instead, `raw_adata` should be the *fully
-unfiltered* matrix, and the pipeline additionally accepts
-`params/cellbender_params.csv` — an optional per-batch settings file
-(columns: `batch, total_droplets_included, expected_cells`; omit a value or
-the whole file to let Cellbender estimate automatically).
+```bash
+nf-test test            # stub runs of qc, outliers and all
+```
 
 ## License
 

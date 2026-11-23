@@ -1,0 +1,10 @@
+# QC then outlier removal in one run (outlier removal uses the QC outputs directly; no qc_stats needed).
+step: all
+outdir: results/2026-11-24_all
+
+datasets:
+  - name: alldata
+    adata: /path/to/adata_raw_prob0.5.h5ad
+    celltype_csv: /path/to/celltype_markers.csv
+    clusters: topo_clusters_ms_res0.4    # check the qc clustree first if unsure, or run `step: qc` then `step: outliers`
+    skip_scSHC: true
