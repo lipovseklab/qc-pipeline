@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 import seaborn as sb
+from scipy.cluster.hierarchy import leaves_list, linkage
 
 from .io import gep_columns, gep_number
 from .panels import plot_enrichment, plot_gene, plot_usage
@@ -121,50 +122,55 @@ def plot_usage_by_age(adata, age_col, palettes, cutoff, out_base, formats):
 
 
 def plot_usage_by_cluster_and_age(adata, cluster_col, age_col, palettes, cutoff, out_base, formats, min_cells=10):
-    """Heatmap with one row per cluster x age group (sorted by cluster, then age) and side colour bars for both.
+    """Clustermap with one row per cluster x age group and side colour bars for both.
 
-    Groups with fewer than `min_cells` cells are left out, since percentages from a handful of cells are unreliable.
+    Clusters are ordered by the similarity of their (age-averaged) GEP usage and GEPs are clustered too; ages stay in
+    chronological order within each cluster. Groups with fewer than `min_cells` cells are left out, since percentages
+    from a handful of cells are unreliable.
     """
     obs = adata.obs
     counts = obs.groupby([obs[cluster_col].astype(str), obs[age_col].astype(str)], observed=True).size()
     pct = percent_above(adata, [cluster_col, age_col], cutoff)
     pct = pct.loc[counts[counts >= min_cells].index.intersection(pct.index)]
 
-    cluster_order = {str(c): i for i, c in enumerate(_sorted_categories(obs[cluster_col]))}
+    # clusters in order of similarity (average linkage on their mean profile across ages)
+    profiles = pct.groupby(level=0).mean()
+    names = list(profiles.index)
+    if len(names) > 2:
+        names = [names[i] for i in leaves_list(linkage(profiles.to_numpy(), method='average'))]
+    cluster_order = {c: i for i, c in enumerate(names)}
     age_order = {str(c): i for i, c in enumerate(_sorted_categories(obs[age_col]))}
     pct = pct.loc[sorted(pct.index, key=lambda ix: (cluster_order[ix[0]], age_order[ix[1]]))]
-    labels = [f'{c} | {a}' for c, a in pct.index]
 
-    height = max(60 * MM, 2.4 * MM * len(pct) + 25 * MM)
-    fig, axs = plt.subplots(1, 4, figsize=(DOUBLE_COLUMN, height), layout='constrained',
-                            gridspec_kw={'width_ratios': [0.015, 0.015, 1, 0.025], 'wspace': 0.01})
-    for ax, (name, col, pal) in zip(axs[:2], [('Cluster', 0, palettes[cluster_col]), ('Age', 1, palettes[age_col])]):
-        colours = [mpl.colors.to_rgb(pal[ix[col]]) for ix in pct.index]
-        ax.imshow(np.array(colours)[:, None, :], aspect='auto', interpolation='nearest')
-        ax.set_xticks([0])
-        ax.set_xticklabels([name], rotation=90)
-        ax.tick_params(axis='x', length=0)
-        ax.grid(False)
-        ax.set_yticks([])
-        for spine in ax.spines.values():
-            spine.set_visible(False)
-    sb.heatmap(pct.reset_index(drop=True), ax=axs[2], cmap='viridis', cbar_ax=axs[3], yticklabels=labels,
-               cbar_kws={'label': f'% cells with usage > {cutoff}'}, linewidths=0)
-    axs[2].set_xlabel('GEP')
-    axs[2].yaxis.tick_right()
-    axs[2].tick_params(axis='y', labelsize=4, length=0, rotation=0)
-    axs[2].tick_params(axis='x', length=0, rotation=0)
-    axs[2].set_ylabel('')
-    axs[2].grid(False)
-    axs[3].grid(False)
+    labels = [f'{c} | {a}' for c, a in pct.index]
+    row_colors = pd.DataFrame({'Cluster': [palettes[cluster_col][c] for c, _ in pct.index],
+                               'Age': [palettes[age_col][a] for _, a in pct.index]}, index=labels)
+    flat = pct.set_axis(labels, axis=0)
+
+    g = sb.clustermap(flat, cmap='viridis', row_cluster=False, col_cluster=flat.shape[1] > 1, row_colors=row_colors,
+                      dendrogram_ratio=(0.0, 0.06), colors_ratio=0.02, linewidths=0,
+                      figsize=(DOUBLE_COLUMN, max(60 * MM, 2.4 * MM * len(pct) + 30 * MM)),
+                      cbar_pos=(0.945, 0.3, 0.012, 0.4), yticklabels=True)
+    g.gs.update(right=0.9)
+    g.cax.set_position([0.935, 0.3, 0.012, 0.4])
+    g.cax.set_title(f'% cells with\nusage > {cutoff}', fontsize=6, loc='left')
+    g.cax.tick_params(labelsize=5)
+    g.ax_row_colors.tick_params(axis='x', length=0, labelsize=6)
+    g.ax_row_colors.grid(False)
+    g.ax_heatmap.grid(False)
+    g.ax_heatmap.set_xlabel('GEP')
+    g.ax_heatmap.set_ylabel('')
+    g.ax_heatmap.yaxis.tick_right()
+    g.ax_heatmap.tick_params(axis='y', labelsize=4, length=0, rotation=0)
+    g.ax_heatmap.tick_params(axis='x', length=0, rotation=0)
 
     # a white line between clusters, across the colour bars and the heatmap
-    starts = [i for i in range(1, len(pct)) if pct.index[i][0] != pct.index[i - 1][0]]
-    for i in starts:
-        for ax in axs[:2]:
-            ax.axhline(i - 0.5, color='white', linewidth=1.5)    # imshow rows are centred on whole numbers
-        axs[2].axhline(i, color='white', linewidth=1.5)          # heatmap cells span i to i + 1
-    return save_figure(fig, out_base, formats), pct
+    for i in [i for i in range(1, len(pct)) if pct.index[i][0] != pct.index[i - 1][0]]:
+        g.ax_row_colors.axhline(i, color='white', linewidth=1.5)
+        g.ax_heatmap.axhline(i, color='white', linewidth=1.5)
+
+    pct = pct.iloc[:, g.dendrogram_col.reordered_ind] if g.dendrogram_col is not None else pct
+    return save_figure(g.figure, out_base, formats), pct
 
 
 # --- projection summary -----------------------------------------------------------------------------------------
