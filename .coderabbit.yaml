@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit AI review settings. Docs: https://docs.coderabbit.ai/guides/configure-coderabbit
+language: en-GB
+reviews:
+  profile: chill                  # fewer nitpicks; focus on real problems
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:                   # never review data or run outputs
+    - "!**/*.h5ad"
+    - "!**/*.png"
+    - "!**/*.pdf"
+    - "!**/results*/**"
+    - "!**/work/**"
+    - "!**/.nextflow*/**"
+  path_instructions:
+    - path: "**/*.nf"
+      instructions: >-
+        Nextflow DSL2 pipeline code. Check channel logic (joins, keys, collect/flatten), that every process
+        declares a container and a resource label, that outputs are published deliberately, and that
+        dataset-specific values come from params rather than being hard-coded. Follow nf-core conventions.
+    - path: "**/*.config"
+      instructions: >-
+        Nextflow configuration. Flag hard-coded dataset paths or test inputs used in non-test profiles, and
+        any profile that points an input at its own output directory.
+    - path: "bin/**/*.py"
+      instructions: >-
+        Python scripts run by Nextflow processes on large AnnData objects (single-nucleus RNA-seq of the mouse
+        utricle). Check the statistics and filtering logic, memory use (avoid unnecessary .copy() of large
+        objects), that thresholds are command-line arguments rather than constants, and that logging uses
+        {}-style formatting (logging.Formatter(..., style='{')).
+    - path: "bin/**/*.R"
+      instructions: "R scripts run by Nextflow processes. Check correctness and that inputs/outputs match the calling process."
+chat:
+  auto_reply: true
