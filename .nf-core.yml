@@ -15,7 +15,7 @@ template:
   name: utricleqc
   author: Rachel Honeyghan-Williams
   description: QC pipeline for mouse utricle single-cell data — cell calling, doublet detection, minimal filtering, dimensionality reduction, clustering and outlier removal.
-  org: lipovsek-lab
+  org: lipovseklab
   version: 1.0.0
   outdir: qc-pipeline-nfcore
   skip_features:

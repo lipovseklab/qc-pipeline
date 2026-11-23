@@ -6,7 +6,7 @@
 
  process clustree {
 
-    container "${projectDir}/containers/r-clustering.sif"
+    container "${params.container_dir}/r-clustering.sif"
 
     input:
     path adata
