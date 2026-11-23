@@ -1,0 +1,55 @@
+// Downstream GEP analysis of one sample after consensus: merges the GEP usages into the AnnData, top genes,
+// GOBP + CollecTRI enrichment, and the figures. Writes <outdir>/<sample>/<analysis_dir>/{csvs,excel,figures,anndatas}.
+process ANALYSIS {
+    container "${projectDir}/envs/cnmf-analysis.sif"
+    tag "${sample}"
+    publishDir { "${params.outdir}/${sample}" }, pattern: "${params.analysis_dir}", mode: 'copy'
+    publishDir { "${params.outdir}/${sample}/logs" }, pattern: '.command.{out,err}', mode: 'copy',
+        saveAs: { fn -> "${task.process}${fn.replace('.command', '')}" }
+
+    input:
+    tuple val(sample), val(run_name), path(adata), val(run_dir)
+    path gmt
+    path collectri
+
+    output:
+    path "${params.analysis_dir}"
+    path '.command.out', hidden: true, optional: true
+    path '.command.err', hidden: true, optional: true
+
+    script:
+    """
+    # matplotlib / numba want writable cache folders; the container's home may not be
+    export MPLCONFIGDIR=\$PWD/.matplotlib NUMBA_CACHE_DIR=\$PWD/.numba
+
+    # what started this run, for the call record written next to the outputs
+    cat > nextflow_info.txt <<'NXF_INFO'
+command: ${workflow.commandLine}
+run name: ${workflow.runName}
+session id: ${workflow.sessionId}
+script revision: ${workflow.scriptId}
+launch directory: ${workflow.launchDir}
+project directory: ${workflow.projectDir}
+NXF_INFO
+
+    gep_analysis.py \\
+        --adata ${adata} \\
+        --run_dir ${run_dir} \\
+        --run_name ${run_name} \\
+        --k ${params.selected_k} \\
+        --threshold ${params.threshold} \\
+        --gmt ${gmt} \\
+        --collectri ${collectri} \\
+        --sample ${sample} \\
+        --out ${params.analysis_dir} \\
+        --projection ${params.projection} \\
+        --clusters ${params.clusters} \\
+        --age ${params.age} \\
+        ${params.summary_cols ? "--summary_cols ${params.summary_cols}" : ''} \\
+        --usage_cutoff ${params.usage_cutoff} \\
+        --n_top_genes ${params.n_top_genes} \\
+        --geps_per_page ${params.geps_per_page} \\
+        --formats ${params.formats} \\
+        --nextflow_info nextflow_info.txt
+    """
+}
