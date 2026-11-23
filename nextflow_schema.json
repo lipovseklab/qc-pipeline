@@ -108,6 +108,19 @@
           "fa_icon": "fas fa-box",
           "description": "Folder containing the apptainer images (utricle-qc.sif, r-clustering.sif, vaeda.sif, cellbender.sif).",
           "help_text": "The images are not stored in git. Defaults to <pipeline>/containers; set per machine via a profile or --container_dir."
+        },
+        "allow_dirty": {
+          "type": "boolean",
+          "default": false,
+          "fa_icon": "fas fa-exclamation-triangle",
+          "description": "Run even if the pipeline code has uncommitted changes (test runs only).",
+          "help_text": "By default the pipeline stops when its code has uncommitted changes, so every result can be tied to a commit. The setting and the edited files are recorded in <outdir>/pipeline_info/provenance.json."
+        },
+        "trace_report_suffix": {
+          "type": "string",
+          "fa_icon": "far calendar",
+          "hidden": true,
+          "description": "Suffix for the execution report files in pipeline_info/ (default: date and time of the run)."
         }
       }
     }
