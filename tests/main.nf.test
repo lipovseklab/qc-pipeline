@@ -143,4 +143,20 @@ nextflow_pipeline {
             assert (workflow.stdout + workflow.stderr).any { it.contains('outdri') }
         }
     }
+
+    test("multi-line setting is rejected") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'all'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                              celltype_csv: "${projectDir}/test/celltype_test.csv", clusters: "topo_clusters_ms_res0.4\njunk\n" ]]
+            }
+        }
+        then {
+            assert workflow.failed
+            assert (workflow.stdout + workflow.stderr).any { it.contains('must not be blank or contain spaces: clusters') }
+        }
+    }
 }

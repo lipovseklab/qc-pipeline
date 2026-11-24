@@ -15,7 +15,8 @@ Laid out following nf-core conventions (`main.nf`, `workflows/`, `modules/local/
 Everything about a run goes in **one file**, `run.yaml`; copy one of the examples and edit it:
 
 1. `cp examples/outliers.yaml run.yaml` (or `qc.yaml`, `all.yaml`)
-2. Edit `step`, `outdir` and the dataset entry. Only settings that differ from the defaults are needed.
+2. Edit `step`, `outdir`, `container_dir` (absolute path to the images, see below) and the dataset entry. Only
+   settings that differ from the defaults are needed.
 3. Run:
    ```bash
    nextflow run lipovseklab/qc-pipeline -r <version> -profile ucl_myriad -params-file run.yaml
