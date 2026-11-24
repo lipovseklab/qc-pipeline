@@ -85,7 +85,7 @@ so check gene symbols match your naming.
 
 Profiles hold machine settings only; dataset settings always go in `run.yaml`.
 
-- `test` — tiny bundled dataset (`test/`), step `all`; used by `nf-test`.
+- `test` — small public dataset (`test/adata_test.h5ad`: 600 Parse mouse lymph node nuclei plus simulated empty droplets, CC BY 4.0; see `test/README.md`), step `all`; used by `nf-test`.
 - `ucl_myriad` — UCL Myriad SGE cluster.
 
 ## Testing
