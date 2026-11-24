@@ -14,8 +14,10 @@ module load apptainer
 # pull container and move to envs subdirectory
 apptainer pull envs/cnmf_env.sif docker://quay.io/biocontainers/cnmf:1.7.1--pyhdfd78af_0
 
-# for running topometry on subset of data: the QC pipeline's image (definition in ../../containers/)
-cp ../../containers/utricle-qc.sif envs/    # or: (cd ../.. && apptainer build containers/utricle-qc.sif containers/utricle-qc.def)
+# for running topometry on subset of data: the QC pipeline's image. Build it at the repository root first
+# (skip if ../../containers/utricle-qc.sif exists), then copy it here
+(cd ../.. && bin/helpers/setup-containers.sh)
+cp ../../containers/utricle-qc.sif envs/
 
 # for the downstream GEP analysis (scanpy, decoupler, seaborn, openpyxl)
 apptainer build envs/cnmf-analysis.sif envs/cnmf-analysis.def

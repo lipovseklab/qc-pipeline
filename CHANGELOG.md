@@ -4,6 +4,14 @@
 
 ### `Fixed`
 
+- run.yaml checks: blank required settings count as missing; dataset `name` may only use letters, digits, `_`, `.`
+  and `-`; text settings may not contain spaces; a misspelt top-level setting (e.g. `outdri`) now stops the run.
+- Provenance guard: a copy of the pipeline that isn't tracked by the git repository around it, or a failed
+  `git status`, is no longer taken for a clean commit. An unreadable `.sha256` cache or an image-hashing error no
+  longer stops the final `provenance.json` from being written.
+- `bin/helpers/setup-containers.sh` keeps images that already exist (`--force` rebuilds), so it can be rerun after a failure.
+- README: minimum Nextflow is 25.10 (nf-schema 2.5.1 needs >= 25.04); `skip_cellbender: false` needs a GPU;
+  `container_dir` must be an absolute path when running `lipovseklab/qc-pipeline` from GitHub.
 - cNMF: a rerun with another `--seed` in an existing run folder no longer mixes old and new spectra: PREP records the
   seed in `<run>/cnmf_seed.txt` and stops on a mismatch (or on factorize results with no seed record).
 - cNMF: TopOMetry PCA asks for at most `min(100, cells - 1, genes - 1)` components, so small subsets no longer fail.
