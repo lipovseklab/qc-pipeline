@@ -143,7 +143,14 @@ be compared before choosing `clusters`.
 ## Containers
 
 `cnmf_env.sif` (cNMF 1.7.1 from BioContainers), `cnmf-analysis.sif`, `clustree.sif`, and `utricle-qc.sif` for
-TopOMetry, all in `container_dir`: `bin/helpers/setup-containers.sh cnmf_env cnmf-analysis clustree utricle-qc`.
+TopOMetry, all in `container_dir`. Build them into that folder from a clone of this repo, e.g. on Myriad (where the
+`ucl_myriad` profile sets `container_dir` to `~/Scratch/containers`):
+
+```bash
+bin/helpers/setup-containers.sh --dest ~/Scratch/containers cnmf_env cnmf-analysis clustree utricle-qc
+```
+
+Without `--dest` the images go to the clone's `containers/`; then set `container_dir` to that folder in `run.yaml`.
 
 ## Resources
 

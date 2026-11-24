@@ -70,9 +70,10 @@ One entry under `datasets:` (one dataset per run for now).
 | `cnmf` | cnmf, consensus, analysis | — | cNMF settings and subsets ([docs/cnmf.md](docs/cnmf.md)) |
 
 Run-wide settings: `outdir` (default `results`) and `container_dir` (folder with the `.sif` images; default
-`<pipeline>/containers`). The images are not in git: build them once with `bin/helpers/setup-containers.sh`
-(in a clone of this repo) and set `container_dir` to the **absolute** path of that clone's `containers/` folder in
-`run.yaml`. `nextflow run lipovseklab/qc-pipeline` runs its own cached copy of the code, which has no images.
+`<pipeline>/containers`; `~/Scratch/containers` with `-profile ucl_myriad`). The images are not in git: build them once
+with `bin/helpers/setup-containers.sh` (in a clone of this repo; `--dest <folder>` puts them elsewhere, e.g.
+`--dest ~/Scratch/containers` on Myriad) and set `container_dir` to the **absolute** path of that folder in
+`run.yaml` unless the profile already points there. `nextflow run lipovseklab/qc-pipeline` runs its own cached copy of the code, which has no images.
 
 **Cell calling.** The default `skip_cellbender: true` expects an already **cell-called** `adata` (nuclei with
 `cell_probability < 0.5` removed), e.g. from a separate CellBender run; no empty-droplet removal happens in this
