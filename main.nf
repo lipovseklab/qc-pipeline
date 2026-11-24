@@ -183,9 +183,10 @@ def cnmfRuns(ds) {
         def run_name = s.run_name ?: (recorded.exists() ? recorded.text.trim() : null)
         if( !run_name ) {
             if( params.step == 'cnmf' || workflow.stubRun ) run_name = "cnmf_${tag}_${today}"
+            else if( s.selected_k == null ) run_name = null      // skipped by consensus/analysis below
             else error "${where}: no cNMF run found for '${tag}' (${recorded} is missing): run step cnmf into this outdir first, or give run_name"
         }
-        if( !(run_name ==~ /[\w.-]+/) )
+        if( run_name != null && !(run_name ==~ /[\w.-]+/) )
             error "${where}: run name '${run_name}' may only use letters, digits, _, . and -"
 
         def n_jobs = k.size() * s.n_iters
@@ -205,7 +206,7 @@ def cnmfRuns(ds) {
     def dupTag = runs.countBy { r -> r.tag }.findAll { _t, n -> n > 1 }.keySet()
     if( dupTag )
         error "cnmf.subsets give the same folder name more than once (values that differ only in spaces or punctuation?): ${dupTag.join(', ')}"
-    def dupName = runs.countBy { r -> r.run_name }.findAll { _t, n -> n > 1 }.keySet()
+    def dupName = runs.findAll { r -> r.run_name != null }.countBy { r -> r.run_name }.findAll { _t, n -> n > 1 }.keySet()
     if( dupName )
         error "cnmf.subsets give the same run_name more than once: ${dupName.join(', ')}"
 

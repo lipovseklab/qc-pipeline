@@ -43,6 +43,13 @@
 - `ucl_myriad` profile: `container_dir` defaults to `~/Scratch/containers`; `queueSize` 800 for the cNMF factorize jobs.
 - A stray word on the command line (e.g. `threshold 0.5` without `--`) stops the run, for every step.
 - CI lints the whole pipeline.
+- `bin/helpers/setup-containers.sh` passes `APPTAINER_OPTS` to apptainer (on WSL: `APPTAINER_OPTS=--ignore-subuid`
+  when a build stops with "failed to mount binfmt_misc filesystem").
+- cNMF: a numeric subset value matches a numeric (or numeric categorical) obs column; `summary_cols` reach the
+  analysis as one comma-separated list; a whole-dataset run with `hvgs` gives cNMF the raw counts (`.raw` or
+  `layers['counts']`, via `bin/cnmf_counts.py`) instead of `X`; subsets without `selected_k` need no earlier run for
+  consensus/analysis; `topometry.py --min_cells` sets both gene filters; the factorize and combine retry exceptions
+  are no longer overridden by the common cNMF retry rule.
 
 - Container recipes: removed the WSL `ssl_verify false` workaround; pinned `cellbender==0.3.0`, `scikit-misc==0.5.2`
   and `hnswlib` to the versions in the image used for the paper runs; dropped machine-specific `prefix:` lines.

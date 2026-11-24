@@ -87,13 +87,19 @@ the same gene order, and writes `<run_name>.usages.k_<k>.dt_<threshold>.consensu
 
 ## Analysis
 
-One-off setup on a machine with internet access (compute nodes may have none), from the pipeline folder:
+One-off setup on a machine with internet access (compute nodes may have none), in a clone of this repo:
 
 ```bash
 apptainer exec containers/cnmf-analysis.sif python bin/fetch_resources.py   # writes assets/resources/ (GMT + CollecTRI)
 ```
 
-or set `gmt` and `collectri` in `run.yaml` to copies elsewhere.
+`nextflow run lipovseklab/qc-pipeline` runs its own cached copy of the code, which does not have these files, so
+give their **absolute** paths in `run.yaml` (top level, next to `container_dir`):
+
+```yaml
+gmt: /path/to/qc-pipeline/assets/resources/MOUSE_GO_bp_no_GO_iea_symbol.gmt
+collectri: /path/to/qc-pipeline/assets/resources/collectri_mouse.parquet
+```
 
 Outputs go to `<outdir>/cnmf/<tag>/analysis/`:
 

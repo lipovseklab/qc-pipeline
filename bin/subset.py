@@ -3,6 +3,7 @@
 import scanpy as sc
 import anndata as ad
 import argparse
+import pandas as pd
 from pathlib import Path
 
 def build_parser():
@@ -51,8 +52,13 @@ def main():
 	# read adata
 	adata = ad.read_h5ad(args.counts)
 
-	# subset by obs
-	adata = adata[adata.obs[args.metadata] == args.subset]
+	# subset by obs; the value arrives as text, so compare as a number when the column is numeric
+	column = adata.obs[args.metadata]
+	value = args.subset
+	dtype = column.cat.categories.dtype if isinstance(column.dtype, pd.CategoricalDtype) else column.dtype
+	if pd.api.types.is_numeric_dtype(dtype):
+		value = pd.to_numeric(value)
+	adata = adata[column == value]
 
 	# write adata
 	adata.write(f'{outpath}/adata_{args.metadata}_{args.label or args.subset}.h5ad')

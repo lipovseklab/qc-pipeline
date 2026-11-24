@@ -44,7 +44,7 @@ def pca_umap_baseline(adata, npcs=40, savename=None):
     del adata.obsm['X_umap']
 
 
-def run_topometry(adata_path, descriptor, npcs=30, cnmf_outputs=False):
+def run_topometry(adata_path, descriptor, npcs=30, cnmf_outputs=False, min_cells=3):
     # read adata
     adata = ad.read_h5ad(adata_path)
 
@@ -70,9 +70,9 @@ def run_topometry(adata_path, descriptor, npcs=30, cnmf_outputs=False):
     adata.raw = adata.copy()
 
     if cnmf_outputs:
-        # cNMF subsets: drop genes expressed in fewer than 3 cells (.raw keeps all genes) -- the
+        # cNMF subsets: drop genes expressed in fewer than min_cells cells (.raw keeps all genes) -- the
         # seurat_v3 HVG loess fit fails on very sparse subsets
-        sc.pp.filter_genes(adata, min_cells=3)
+        sc.pp.filter_genes(adata, min_cells=min_cells)
         print(f'{adata_path}: n_genes after filtering = {adata.n_vars:,}')
 
     # run standard pre-processing
@@ -181,22 +181,24 @@ def build_parser():
     p.add_argument('--descriptor', required=True)
     p.add_argument('--metadata', default=None)
     p.add_argument('--cnmf_outputs', action='store_true',
-                   help='for cNMF: filter genes in < 3 cells before HVG selection, and also write '
-                        'hvgs_<descriptor>.csv and counts_<descriptor>.h5ad (raw counts, genes in >= 3 cells)')
+                   help='for cNMF: filter genes in < --min_cells cells before HVG selection, and also write '
+                        'hvgs_<descriptor>.csv and counts_<descriptor>.h5ad (raw counts, genes in >= --min_cells cells)')
+    p.add_argument('--min_cells', type=int, default=3,
+                   help='with --cnmf_outputs: keep genes expressed in at least this many cells (default: 3)')
     return p
 
 
 def main():
     args = build_parser().parse_args()
 
-    adata, tg = run_topometry(args.adata, args.descriptor, cnmf_outputs=args.cnmf_outputs)
+    adata, tg = run_topometry(args.adata, args.descriptor, cnmf_outputs=args.cnmf_outputs, min_cells=args.min_cells)
     adata = find_best_embedding(adata, args.descriptor)
     plot_comparisons(adata, args.descriptor, args.metadata)
 
     if args.cnmf_outputs:
-        # the full raw count matrix (genes in >= 3 cells) for cnmf -- X of the topometry adata is scaled
+        # the full raw count matrix (genes in >= min_cells cells) for cnmf -- X of the topometry adata is scaled
         counts = adata.raw.to_adata()
-        sc.pp.filter_genes(counts, min_cells=3)
+        sc.pp.filter_genes(counts, min_cells=args.min_cells)
         counts.write(f'counts_{args.descriptor}.h5ad')
 
     adata.write(f'adata_topometry_{args.descriptor}.h5ad')

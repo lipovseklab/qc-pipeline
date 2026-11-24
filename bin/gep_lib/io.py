@@ -41,7 +41,7 @@ def load_gep_results(run_dir: str | Path, run_name: str, k: int, threshold: floa
     if usage_source == 'refit':
         usage_file = run_dir / f'{run_name}.usages.k_{k}.dt_{dt}.consensus.refit.txt'
         if not usage_file.exists():
-            raise FileNotFoundError(f'{usage_file} not found. Run the pipeline's consensus step for this subset first '
+            raise FileNotFoundError(f'{usage_file} not found. Run the consensus step of the pipeline for this subset first '
                                     f'(cNMF 1.7.1 writes wrong usages), or use --usage_source file.')
     elif usage_source != 'file':
         raise ValueError(f"usage_source must be 'refit' or 'file', not {usage_source!r}")

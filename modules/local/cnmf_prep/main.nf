@@ -18,8 +18,11 @@ process cnmf_prep {
 
     script:
     def outdir = file("${params.outdir}/cnmf/${meta.tag}").toAbsolutePath()   // cnmf adds /${meta.run_name}
+    // topometry hands over raw counts in X; a whole-dataset run with a given HVG list gets them here
+    def counts_file = meta.hvgs ? 'counts_for_cnmf.h5ad' : counts
     """
     echo ${meta.run_name} > run_name.txt
+    ${meta.hvgs ? "cnmf_counts.py --adata ${counts} --out ${counts_file}" : ''}
 
     # cnmf factorize --skip-completed-runs keeps every spectra file already in the run folder. Spectra made with
     # another seed would then be mixed into the consensus without any trace, so the seed is recorded per run folder.
@@ -38,7 +41,7 @@ process cnmf_prep {
     cnmf prepare \\
         --output-dir ${outdir} \\
         --name ${meta.run_name} \\
-        -c ${counts} \\
+        -c ${counts_file} \\
         -k ${meta.k.join(' ')} \\
         --n-iter ${meta.n_iters} \\
         --genes-file ${hvgs} \\

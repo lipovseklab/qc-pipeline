@@ -46,7 +46,7 @@ NXF_INFO
         --projection ${meta.projection} \\
         --clusters ${meta.clusters} \\
         --age ${meta.age} \\
-        ${meta.summary_cols ? "--summary_cols ${meta.summary_cols.join(' ')}" : ''} \\
+        ${meta.summary_cols ? "--summary_cols '${meta.summary_cols.join(',')}'" : ''} \\
         --usage_cutoff ${meta.usage_cutoff} \\
         --n_top_genes ${meta.n_top_genes} \\
         --geps_per_page ${meta.geps_per_page} \\
