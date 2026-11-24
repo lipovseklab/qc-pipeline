@@ -3,20 +3,96 @@ nextflow_pipeline {
     name "Test Workflow main.nf"
     script "../main.nf"
 
-    test("Should wire up and complete a stub run against the bundled test data") {
-
+    test("step all: qc then outliers (stub)") {
         options "-stub-run"
-
         when {
             params {
                 outdir = "$outputDir"
+                step   = 'all'
             }
         }
-
         then {
             assert workflow.success
+            assert path("$outputDir/qc/anndatas/adata_doublets.h5ad").exists()
+            assert path("$outputDir/outliers/anndatas/adata_final_filter_test.h5ad").exists()
+            def prov = path("$outputDir/pipeline_info/provenance.json").json
+            assert prov.status == 'completed'
+            assert prov.pipeline.commit
+            assert prov.dataset.name == 'test'
         }
-
     }
 
+    test("step qc with CellBender (stub)") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'qc'
+                datasets = [[
+                    name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                    celltype_csv: "${projectDir}/test/celltype_test.csv",
+                    skip_cellbender: false, skip_scSHC: true,
+                ]]
+            }
+        }
+        then {
+            assert workflow.success
+            assert path("$outputDir/qc/plots/cellcalling/plot_barcode_rank_plate.png").exists()
+            assert path("$outputDir/qc/reports/cellbender/cellbender_stub_batch_1_report.html").exists()
+            assert path("$outputDir/qc/reports/cellbender/cellbender_stub_batch_2_report.html").exists()
+            assert path("$outputDir/qc/anndatas/adata_doublets.h5ad").exists()
+        }
+    }
+
+    test("step qc only (stub)") {
+        options "-stub-run"
+        when {
+            params {
+                outdir = "$outputDir"
+                step   = 'qc'
+            }
+        }
+        then {
+            assert workflow.success
+            assert path("$outputDir/qc/anndatas/adata_doublets.h5ad").exists()
+            assert !path("$outputDir/outliers").exists()
+        }
+    }
+
+    test("step outliers only, with qc_stats (stub)") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'outliers'
+                datasets = [[
+                    name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                    celltype_csv: "${projectDir}/test/celltype_test.csv",
+                    clusters: 'topo_clusters_ms_res0.4', skip_scSHC: true,
+                    qc_stats: "${projectDir}/test",
+                ]]
+            }
+        }
+        then {
+            assert workflow.success
+            assert path("$outputDir/outliers/anndatas/adata_final_filter_test.h5ad").exists()
+            assert !path("$outputDir/qc").exists()
+        }
+    }
+
+    test("misspelt dataset setting is rejected") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'qc'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                              celltype_csv: "${projectDir}/test/celltype_test.csv", clusterz: 'x' ]]
+            }
+        }
+        then {
+            assert workflow.failed
+            assert workflow.stdout.any { it.contains('Unknown dataset setting') } || workflow.stderr.any { it.contains('Unknown dataset setting') }
+        }
+    }
 }

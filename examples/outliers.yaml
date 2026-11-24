@@ -1,0 +1,13 @@
+# Outlier removal only, on the output of an earlier qc run.
+# This reproduces the outlier-removal run used in the paper (2026-08-24).
+step: outliers
+outdir: results/2026-08-24_outliers
+
+datasets:
+  - name: alldata
+    adata: /path/to/2026-07-23_qc/qc/anndatas/adata_doublets.h5ad
+    qc_stats: /path/to/2026-07-23_qc/qc/reports/stats   # so the filtering summary covers every stage
+    celltype_csv: /path/to/celltype_markers.csv
+    clusters: topo_clusters_ms_res0.4                   # clusters the MADs are computed in
+    doublet_column: scDblFinder_calls                   # default
+    skip_scSHC: true

@@ -20,4 +20,12 @@ process outlier_filter {
     """
     outlier_filter.py --adata ${adata} --clusters ${clusters} --doublets ${doublets} --descriptor ${descriptor}
     """
+
+    stub:
+    """
+    touch plt_mads_stub_${descriptor}.png
+    touch outliers_${descriptor}.csv
+    touch adata_final_filter_${descriptor}.h5ad
+    touch outliers_${descriptor}.log
+    """
 }

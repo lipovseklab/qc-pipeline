@@ -19,4 +19,9 @@ process split_adata {
     """
     split_adata.py --adata ${raw_adata} --batch ${batch} --batch-col ${batch_col}
     """
+
+    stub:
+    """
+    touch adata_split_${batch}.h5ad
+    """
 }
