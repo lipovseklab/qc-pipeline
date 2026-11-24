@@ -1,0 +1,44 @@
+########
+# Logs #
+########
+
+logs/*
+**[0-9]
+
+########
+# Envs #
+########
+
+envs
+**sif
+
+########
+# Data #
+########
+
+anndatas/*
+results/*
+results_test/*
+**csv
+**h5ad
+
+############
+# Nextflow #
+############
+
+work/
+.nextflow/
+.nextflow.log*
+
+##########
+# Python #
+##########
+
+__pycache__/
+
+# local samplesheet for real runs (assets/samplesheet_test.csv is the tracked example)
+/samplesheet.csv
+
+# downloaded reference files (see bin/fetch_resources.py)
+assets/resources/*
+!assets/resources/.gitkeep
