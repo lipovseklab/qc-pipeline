@@ -48,8 +48,8 @@
             "title": "Consensus options (-entry consensus)",
             "type": "object",
             "properties": {
-                "sample": { "type": ["string", "null"], "description": "Sample folder under outdir (the row tag, e.g. ctype_MEL). Only needed if outdir holds more than one sample; otherwise it is inferred" },
-                "run_name": { "type": ["string", "null"], "description": "Run name to build consensus for" },
+                "sample": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9_.-]+$", "description": "Sample folder under outdir (the row tag, e.g. ctype_MEL). Only needed if outdir holds more than one sample; otherwise it is inferred" },
+                "run_name": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9_.-]+$", "description": "Run name to build consensus for" },
                 "selected_k": { "type": ["integer", "string", "null"], "pattern": "^([2-9]|[1-9]\\d+)$", "minimum": 2, "description": "Chosen number of components (k)" },
                 "threshold": { "type": ["number", "string"], "pattern": "^\\d+(\\.\\d+)?$", "default": 2, "description": "Local density threshold" }
             }

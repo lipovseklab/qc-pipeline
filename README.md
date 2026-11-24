@@ -56,7 +56,7 @@ One entry under `datasets:` (one dataset per run for now).
 | `sample` | all | `sample` | obs column used to colour QC plots |
 | `skip_scSHC` | all | `false` | skip scSHC clustering (needs ~128 GB) |
 | `skip_cellbender` | qc | `true` | `adata` is already cell-called (see below) |
-| `cellbender_csv` | qc | — | per-batch CellBender settings: `batch, total_droplets_included, expected_cells` |
+| `cellbender_csv` | qc | — | per-batch CellBender settings: `batch, total_droplets_included, expected_cells` (example: `examples/cellbender.csv`) |
 | `clusters` | outliers, all | — | obs column with the clusters MADs are computed in, e.g. `topo_clusters_ms_res0.4` |
 | `doublet_column` | outliers, all | `scDblFinder_calls` | obs column with `doublet`/`singlet` calls |
 | `qc_stats` | outliers | — | the qc run's `qc/reports/stats` folder, so the filtering summary covers every stage |

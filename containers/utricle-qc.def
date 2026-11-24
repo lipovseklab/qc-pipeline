@@ -1,4 +1,4 @@
-reBootstrap: docker
+Bootstrap: docker
 From: mambaorg/micromamba:bookworm-slim
 
 %help
@@ -13,11 +13,6 @@ From: mambaorg/micromamba:bookworm-slim
 
 %post
     apt-get update && apt-get install -y procps
-
-    # Disable SSL verification on WSL2 (OpenSSL 3.5.x TLS compatibility issue)
-    if grep -qi "microsoft" /proc/version 2>/dev/null; then
-        micromamba config set ssl_verify false
-    fi
 
     micromamba create -q -y -f /opt/env.yml -p /opt/env
 
