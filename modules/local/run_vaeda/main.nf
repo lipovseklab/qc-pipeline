@@ -2,7 +2,7 @@
 
 process run_vaeda {
 
-    container "${projectDir}/containers/vaeda.sif"
+    container "${params.container_dir}/vaeda.sif"
 
     input:
     path adata

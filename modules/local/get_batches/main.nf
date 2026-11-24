@@ -5,7 +5,7 @@
  */
 process get_batches {
 
-    container "${projectDir}/containers/utricle-qc.sif"
+    container "${params.container_dir}/utricle-qc.sif"
 
     input :
     path raw_adata
