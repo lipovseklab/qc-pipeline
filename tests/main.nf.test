@@ -95,4 +95,52 @@ nextflow_pipeline {
             assert workflow.stdout.any { it.contains('Unknown dataset setting') } || workflow.stderr.any { it.contains('Unknown dataset setting') }
         }
     }
+
+    test("blank required setting is rejected") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'all'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                              celltype_csv: "${projectDir}/test/celltype_test.csv", clusters: ' ' ]]
+            }
+        }
+        then {
+            assert workflow.failed
+            assert (workflow.stdout + workflow.stderr).any { it.contains('is missing: clusters') }
+        }
+    }
+
+    test("dataset name with a path separator is rejected") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'qc'
+                datasets = [[ name: 'donor/1', adata: "${projectDir}/test/adata_test.h5ad",
+                              celltype_csv: "${projectDir}/test/celltype_test.csv" ]]
+            }
+        }
+        then {
+            assert workflow.failed
+            assert (workflow.stdout + workflow.stderr).any { it.contains("Dataset name 'donor/1'") }
+        }
+    }
+
+    test("misspelt top-level setting is rejected") {
+        options "-stub-run"
+        when {
+            params {
+                outdri   = "$outputDir"
+                step     = 'qc'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                              celltype_csv: "${projectDir}/test/celltype_test.csv" ]]
+            }
+        }
+        then {
+            assert workflow.failed
+            assert (workflow.stdout + workflow.stderr).any { it.contains('outdri') }
+        }
+    }
 }

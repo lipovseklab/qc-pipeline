@@ -50,9 +50,18 @@ def datasetSettings() {
             error "Not found: " + absent.collect { "${it} = ${ds[it]}" }.join('; ')
     }
     def need = ['name', 'adata', 'celltype_csv'] + (params.step in ['outliers', 'all'] ? ['clusters'] : [])
-    def missing = need.findAll { k -> ds[k] == null }
+    def missing = need.findAll { k -> ds[k] == null || ds[k].toString().trim().isEmpty() }
     if( missing )
         error "Dataset '${ds.name ?: '?'}' is missing: ${missing.join(', ')} (step: ${params.step})"
+    // the schema's patterns for dataset entries are not applied (see nextflow.config `validation`), so check them
+    // here: text settings go unquoted into task commands and the name into file names
+    if( !(ds.name ==~ /[A-Za-z0-9_.-]+/) )
+        error "Dataset name '${ds.name}' may contain only letters, digits, '_', '.' and '-'"
+    def spaced = ds.findAll { k, v -> v instanceof CharSequence && (v.toString().trim().isEmpty() || v ==~ /.*\s.*/) }
+    if( spaced )
+        error "Dataset settings must not be blank or contain spaces: ${spaced.keySet().join(', ')}"
+    if( !ds.adata.toString().endsWith('.h5ad') )
+        error "adata must be an .h5ad file (got ${ds.adata})"
     if( params.step == 'outliers' && !ds.qc_stats )
         log.warn "No qc_stats folder given: the filtering summary will only show the outlier stage"
     return ds
