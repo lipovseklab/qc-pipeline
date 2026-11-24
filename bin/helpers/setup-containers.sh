@@ -3,8 +3,8 @@
 #   setup-containers.sh [--force] [image ...]
 #   images: cellbender utricle-qc vaeda r-clustering cnmf_env cnmf-analysis clustree (default: all)
 # Images that already exist are kept, so a rerun after a failure carries on where it stopped; --force rebuilds them.
-# Extra options for apptainer go in APPTAINER_OPTS, e.g. on WSL, where builds can stop with "failed to mount
-# binfmt_misc filesystem": APPTAINER_OPTS=--ignore-subuid setup-containers.sh
+# Extra options for `apptainer build` (not pull) go in APPTAINER_BUILD_OPTS, e.g. on WSL, where builds can stop with
+# "failed to mount binfmt_misc filesystem": APPTAINER_BUILD_OPTS=--ignore-subuid setup-containers.sh
 # The sha256 of the images each run used is recorded in its provenance.json.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -38,6 +38,8 @@ for name in "${images[@]}"; do
         continue
     fi
     read -r verb source <<< "${how[$name]}"
-    # shellcheck disable=SC2086  # APPTAINER_OPTS may hold several options
-    apptainer "$verb" --force ${APPTAINER_OPTS:-} "$image" "$source"
+    opts=()
+    # APPTAINER_BUILD_OPTS may hold several options; `apptainer pull` rejects build-only ones such as --ignore-subuid
+    [[ $verb == build ]] && read -r -a opts <<< "${APPTAINER_BUILD_OPTS:-}"
+    apptainer "$verb" --force "${opts[@]}" "$image" "$source"
 done

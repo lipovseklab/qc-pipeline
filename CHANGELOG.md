@@ -43,8 +43,8 @@
 - `ucl_myriad` profile: `container_dir` defaults to `~/Scratch/containers`; `queueSize` 800 for the cNMF factorize jobs.
 - A stray word on the command line (e.g. `threshold 0.5` without `--`) stops the run, for every step.
 - CI lints the whole pipeline.
-- `bin/helpers/setup-containers.sh` passes `APPTAINER_OPTS` to apptainer (on WSL: `APPTAINER_OPTS=--ignore-subuid`
-  when a build stops with "failed to mount binfmt_misc filesystem").
+- `bin/helpers/setup-containers.sh` passes `APPTAINER_BUILD_OPTS` to `apptainer build` (on WSL:
+  `APPTAINER_BUILD_OPTS=--ignore-subuid` when a build stops with "failed to mount binfmt_misc filesystem").
 - cNMF: a numeric subset value matches a numeric (or numeric categorical) obs column; `summary_cols` reach the
   analysis as one comma-separated list; a whole-dataset run with `hvgs` gives cNMF the raw counts (`.raw` or
   `layers['counts']`, via `bin/cnmf_counts.py`) instead of `X`; subsets without `selected_k` need no earlier run for
