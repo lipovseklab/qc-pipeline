@@ -125,13 +125,14 @@ def writeProvenance(Map code, Map dataset, Map extra = [:]) {
 // container images in params.container_dir with their sha256 (skipped for stub runs)
 def containerHashes() {
     if( workflow.stubRun ) return [:]
-    def dir = file(params.container_dir)
-    if( !dir.exists() ) return [:]
     // the hashes are extra information: never let them stop the final provenance.json being written
+    def dir = null
     try {
+        dir = file(params.container_dir)
+        if( !dir.exists() ) return [:]
         return dir.listFiles().findAll { f -> f.name.endsWith('.sif') }.sort { f -> f.name }.collectEntries { f -> [(f.name): imageSha256(f)] }
     } catch( Exception e ) {
-        log.warn "Couldn't hash the container images in ${dir}: ${e.message}"
+        log.warn "Couldn't hash the container images in ${dir ?: params.container_dir}: ${e.message}"
         return [error: e.message]
     }
 }

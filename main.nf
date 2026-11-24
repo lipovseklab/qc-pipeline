@@ -57,7 +57,7 @@ def datasetSettings() {
     // here: text settings go unquoted into task commands and the name into file names
     if( !(ds.name ==~ /[A-Za-z0-9_.-]+/) )
         error "Dataset name '${ds.name}' may contain only letters, digits, '_', '.' and '-'"
-    def spaced = ds.findAll { k, v -> v instanceof CharSequence && (v.toString().trim().isEmpty() || v ==~ /.*\s.*/) }
+    def spaced = ds.findAll { k, v -> v instanceof CharSequence && (v.toString().trim().isEmpty() || (v.toString() =~ /\s/).find()) }
     if( spaced )
         error "Dataset settings must not be blank or contain spaces: ${spaced.keySet().join(', ')}"
     if( !ds.adata.toString().endsWith('.h5ad') )
