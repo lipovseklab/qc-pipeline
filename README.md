@@ -5,7 +5,8 @@
 
 QC pipeline for mouse utricle single-cell data: cell calling (CellBender),
 doublet detection (vaeda + scDblFinder), minimal filtering, dimensionality
-reduction (TopOMetry), clustering (scSHC + clustree) and outlier removal.
+reduction (TopOMetry), clustering (scSHC + clustree) and outlier removal; then
+gene expression programs with cNMF on the annotated data.
 
 Laid out following nf-core conventions (`main.nf`, `workflows/`, `modules/local/<name>/main.nf`, `conf/`,
 `nextflow_schema.json`). `nf-core pipelines lint` has not been run yet.
@@ -14,7 +15,7 @@ Laid out following nf-core conventions (`main.nf`, `workflows/`, `modules/local/
 
 Everything about a run goes in **one file**, `run.yaml`; copy one of the examples and edit it:
 
-1. `cp examples/outliers.yaml run.yaml` (or `qc.yaml`, `all.yaml`)
+1. `cp examples/outliers.yaml run.yaml` (or `qc.yaml`, `all.yaml`, `cnmf.yaml`)
 2. Edit `step`, `outdir`, `container_dir` (absolute path to the images, see below) and the dataset entry. Only
    settings that differ from the defaults are needed.
 3. Run:
@@ -29,8 +30,13 @@ Everything about a run goes in **one file**, `run.yaml`; copy one of the example
 | `qc` | cell calling (optional) → QC plots/stats → minimal filter → TopOMetry → clustering → doublets | raw / cell-called adata |
 | `outliers` | MAD-based outlier removal per cluster → QC plots → filtering summary → TopOMetry → clustering | `qc/anndatas/adata_doublets.h5ad` from a qc run |
 | `all` | `qc`, then `outliers` on its output | raw / cell-called adata |
+| `cnmf` | cNMF per subset: subset → TopOMetry (HVGs) → prepare → factorize → combine + k selection plot; clustree | annotated adata (raw counts) |
+| `consensus` | cNMF consensus for the chosen k + usage refit | same as `cnmf`, same outdir |
+| `analysis` | GEP analysis: usages, top genes, enrichment, DGE, figures | same as `cnmf`, same outdir |
 
-Outputs go to `<outdir>/qc/...` and `<outdir>/outliers/...`.
+Outputs go to `<outdir>/qc/...`, `<outdir>/outliers/...` and `<outdir>/cnmf/<subset>/...`. The cNMF steps are
+separate runs because the k and the clusters are chosen from plots in between: see **[docs/cnmf.md](docs/cnmf.md)**
+for their settings (a `cnmf:` block under the dataset) and outputs.
 
 The run file is checked before anything starts: misspelt settings, wrong types (`skip_scSHC: "yes"`),
 missing required settings and missing input files all stop the run with a message saying what to fix.
@@ -52,7 +58,7 @@ One entry under `datasets:` (one dataset per run for now).
 |---|---|---|---|
 | `name` | all | — | short name, used in output file names (`alldata`) |
 | `adata` | all | — | input AnnData (see table above) |
-| `celltype_csv` | all | — | marker table for simple cell typing (format below) |
+| `celltype_csv` | qc, outliers, all | — | marker table for simple cell typing (format below) |
 | `batch` | all | `plate` | obs column with the batch |
 | `sample` | all | `sample` | obs column used to colour QC plots |
 | `skip_scSHC` | all | `false` | skip scSHC clustering (needs ~128 GB) |
@@ -61,6 +67,7 @@ One entry under `datasets:` (one dataset per run for now).
 | `clusters` | outliers, all | — | obs column with the clusters MADs are computed in, e.g. `topo_clusters_ms_res0.4` |
 | `doublet_column` | outliers, all | `scDblFinder_calls` | obs column with `doublet`/`singlet` calls |
 | `qc_stats` | outliers | — | the qc run's `qc/reports/stats` folder, so the filtering summary covers every stage |
+| `cnmf` | cnmf, consensus, analysis | — | cNMF settings and subsets ([docs/cnmf.md](docs/cnmf.md)) |
 
 Run-wide settings: `outdir` (default `results`) and `container_dir` (folder with the `.sif` images; default
 `<pipeline>/containers`). The images are not in git: build them once with `bin/helpers/setup-containers.sh`
@@ -70,7 +77,8 @@ Run-wide settings: `outdir` (default `results`) and `container_dir` (folder with
 **Cell calling.** The default `skip_cellbender: true` expects an already **cell-called** `adata` (nuclei with
 `cell_probability < 0.5` removed), e.g. from a separate CellBender run; no empty-droplet removal happens in this
 mode. With `skip_cellbender: false`, `adata` must be the fully unfiltered matrix, and the machine needs an NVIDIA
-GPU: `run_cellbender` runs with `--cuda` and the container gets `--nv`.
+GPU: `run_cellbender` runs with `--cuda` and the container gets `--nv`. vaeda runs on the CPU (as in the paper run;
+on the paper data a GPU run ran out of GPU memory).
 
 **`celltype_csv`** has **no header row**: column 1 is a cell-type label, the remaining columns are marker gene
 symbols (rows can differ in length; see `test/celltype_test.csv`). Markers not in `adata.var_names` are ignored,
@@ -86,12 +94,13 @@ so check gene symbols match your naming.
 Profiles hold machine settings only; dataset settings always go in `run.yaml`.
 
 - `test` — small public dataset (`test/adata_test.h5ad`: 600 Parse mouse lymph node nuclei plus simulated empty droplets, CC BY 4.0; see `test/README.md`), step `all`; used by `nf-test`.
-- `ucl_myriad` — UCL Myriad SGE cluster.
+- `ucl_myriad` — UCL Myriad SGE cluster; images in `~/Scratch/containers` unless `run.yaml` sets `container_dir`.
 
 ## Testing
 
 ```bash
-nf-test test                                   # stub runs: qc (with and without CellBender), outliers, all
+nf-test test                                   # stub runs: qc (with and without CellBender), outliers, all,
+                                               # cnmf, consensus, analysis, and the run.yaml checks
 nextflow lint . -exclude nf-test.config        # syntax check (needs Nextflow >= 25.04; CI uses 25.10.4)
 ```
 

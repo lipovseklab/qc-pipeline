@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build or pull the pipeline's container images into containers/ (run from anywhere in a clone of this repo).
-#   setup-containers.sh [--force] [image ...]     images: cellbender utricle-qc vaeda r-clustering (default: all)
+#   setup-containers.sh [--force] [image ...]
+#   images: cellbender utricle-qc vaeda r-clustering cnmf_env cnmf-analysis clustree (default: all)
 # Images that already exist are kept, so a rerun after a failure carries on where it stopped; --force rebuilds them.
 # The sha256 of the images each run used is recorded in its provenance.json.
 set -euo pipefail
@@ -11,8 +12,11 @@ declare -A how=(
     [utricle-qc]="build containers/utricle-qc.def"                              # QC, outliers, TopOMetry
     [vaeda]="build containers/vaeda.def"                                        # vaeda (doublets)
     [r-clustering]="build containers/r-clustering.def"                          # scDblFinder, scSHC, clustree
+    [cnmf_env]="pull docker://quay.io/biocontainers/cnmf:1.7.1--pyhdfd78af_0"     # cNMF subset/prepare/factorize/consensus
+    [cnmf-analysis]="build containers/cnmf-analysis.def"                        # cNMF GEP analysis, cluster comparison
+    [clustree]="build containers/clustree.def"                                  # cNMF clustree plots
 )
-all=(cellbender utricle-qc vaeda r-clustering)
+all=(cellbender utricle-qc vaeda r-clustering cnmf_env cnmf-analysis clustree)
 
 force=false
 images=()

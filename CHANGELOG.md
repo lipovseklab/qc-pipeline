@@ -26,6 +26,24 @@
 
 ### `Changed`
 
+- cNMF is part of the main pipeline: `step: cnmf`, `consensus` and `analysis`, driven by the same `run.yaml` as QC
+  (a `cnmf:` block under the dataset, with one entry per subset; `examples/cnmf.yaml`, `docs/cnmf.md`). This replaces
+  `analysis/cnmf/` with its own `main.nf`, configs, samplesheet and `--sample`/`--selected_k` flags: the chosen k,
+  threshold and clusters are now written per subset in `run.yaml`. Outputs go to `<outdir>/cnmf/<tag>/`. The images
+  come from `container_dir` like the QC images (`setup-containers.sh cnmf_env cnmf-analysis clustree`).
+- cNMF: `--step refit_usage` is gone; the consensus step always refits (rerun it to refit). Task logs are no longer
+  copied to `<tag>/logs/` and the per-sample `trace.txt` is not kept: Nextflow's execution trace and report in
+  `pipeline_info/` cover every run. A run name recorded in the outdir is reused, so `--run_date` is not needed to
+  resume on another day.
+- One `bin/topometry.py` for QC and cNMF: the cNMF copy's extra outputs (gene filter before HVG selection, HVG list,
+  counts) are behind `--cnmf_outputs`. The PCA size guard for small subsets now applies to QC too (no change for
+  datasets with more than 100 cells and HVGs). The cNMF clustree script is `bin/clustree_series.R`.
+- vaeda runs on the CPU (no `--nv`): the paper run did (its TensorFlow found no CUDA libraries, and its calls match a
+  CPU rerun exactly), and on the paper data a GPU run on a 5 GB GPU ran out of memory after 40 min.
+- `ucl_myriad` profile: `container_dir` defaults to `~/Scratch/containers`; `queueSize` 800 for the cNMF factorize jobs.
+- A stray word on the command line (e.g. `threshold 0.5` without `--`) stops the run, for every step.
+- CI lints the whole pipeline.
+
 - Container recipes: removed the WSL `ssl_verify false` workaround; pinned `cellbender==0.3.0`, `scikit-misc==0.5.2`
   and `hnswlib` to the versions in the image used for the paper runs; dropped machine-specific `prefix:` lines.
 - `bin/helpers/setup-containers.sh` works from any folder and stops on the first error.

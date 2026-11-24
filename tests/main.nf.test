@@ -159,4 +159,131 @@ nextflow_pipeline {
             assert (workflow.stdout + workflow.stderr).any { it.contains('must not be blank or contain spaces: clusters') }
         }
     }
+
+    // ---- cNMF ----
+
+    test("step cnmf: two subsets and the whole dataset (stub)") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'cnmf'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                              cnmf: [ column: 'sample', k: [2, 3], n_iters: 5, stride: 4,
+                                      subsets: [[value: 'LN_A'], [value: 'LN B', k: [4]], [:]] ] ]]
+            }
+        }
+        then {
+            assert workflow.success
+            // 'LN B' becomes the folder sample_LN_B; the whole dataset uses the dataset name
+            ['sample_LN_A', 'sample_LN_B', 'test'].each { tag ->
+                assert path("$outputDir/cnmf/${tag}/pipeline_info/run_name.txt").exists()
+                assert path("$outputDir/cnmf/${tag}/hvgs_${tag}.csv").exists()
+                assert path("$outputDir/cnmf/${tag}/anndatas/adata_topometry_${tag}.h5ad").exists()
+                assert path("$outputDir/cnmf/${tag}/clustering/clustree_topo_ms.png").exists()
+            }
+            assert path("$outputDir/cnmf/sample_LN_A/anndatas/adata_sample_LN_A.h5ad").exists()
+            // factorize chunks: (2 k x 5) / 4 -> 3, (1 x 5) / 4 -> 2, (2 x 5) / 4 -> 3
+            assert workflow.trace.tasks().findAll { it.name.contains('cnmf_factorize') }.size() == 8
+            assert path("$outputDir/pipeline_info/provenance.json").json.status == 'completed'
+        }
+    }
+
+    test("step consensus: only subsets with a selected_k (stub)") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'consensus'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                              cnmf: [ column: 'sample', k: [2, 3],
+                                      subsets: [[value: 'LN_A', selected_k: 3, threshold: 0.5], [value: 'LN_C']] ] ]]
+            }
+        }
+        then {
+            assert workflow.success
+            // LN_C has no selected_k, so only LN_A runs
+            assert workflow.trace.tasks().findAll { it.name.contains('cnmf_consensus') }.size() == 1
+            assert workflow.trace.tasks().findAll { it.name.contains('cnmf_refit_usage') }.size() == 1
+        }
+    }
+
+    test("step analysis (stub)") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'analysis'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                              cnmf: [ column: 'sample', subsets: [[value: 'LN_A', selected_k: 3, clusters: 'topo_clusters_ms_res0.6']] ] ]]
+            }
+        }
+        then {
+            assert workflow.success
+            assert path("$outputDir/cnmf/sample_LN_A/analysis/analysis_call.txt").exists()
+        }
+    }
+
+    test("consensus without any selected_k is rejected") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'consensus'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                              cnmf: [ column: 'sample', subsets: [[value: 'LN_A']] ] ]]
+            }
+        }
+        then {
+            assert workflow.failed
+            assert (workflow.stdout + workflow.stderr).any { it.contains('no subset has a selected_k yet') }
+        }
+    }
+
+    test("cnmf settings are checked") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'cnmf'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                              cnmf: [ column: 'sample', subsets: [[value: 'LN_A', n_iter: 5]] ] ]]
+            }
+        }
+        then {
+            assert workflow.failed
+            assert (workflow.stdout + workflow.stderr).any { it.contains('Unknown setting(s) in cnmf.subsets[0] (value LN_A): n_iter') }
+        }
+    }
+
+    test("a subset needs a column") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'cnmf'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad",
+                              cnmf: [ subsets: [[value: 'LN_A']] ] ]]
+            }
+        }
+        then {
+            assert workflow.failed
+            assert (workflow.stdout + workflow.stderr).any { it.contains('a subset needs `column`') }
+        }
+    }
+
+    test("cnmf steps need a cnmf block") {
+        options "-stub-run"
+        when {
+            params {
+                outdir   = "$outputDir"
+                step     = 'cnmf'
+                datasets = [[ name: 'test', adata: "${projectDir}/test/adata_test.h5ad" ]]
+            }
+        }
+        then {
+            assert workflow.failed
+            assert (workflow.stdout + workflow.stderr).any { it.contains('needs a `cnmf:` block') }
+        }
+    }
 }
