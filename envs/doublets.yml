@@ -547,4 +547,3 @@ dependencies:
       - werkzeug==3.0.6
       - wrapt==1.12.1
       - xlrd==1.2.0
-prefix: /home/user/miniconda3/envs/doublets

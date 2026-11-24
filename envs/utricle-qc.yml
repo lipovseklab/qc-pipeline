@@ -71,7 +71,7 @@ dependencies:
   - httpx=0.28.1=py314h06a4308_1
   - icu=73.2=h59595ed_0
   - idna=3.11=py314h06a4308_0
-  - hnswlib
+  - hnswlib=0.8.0=py314h3a4f467_1
   - igraph=0.10.16=h98b0679_0
   - importlib_resources=6.5.2=py314h06a4308_0
   - ipykernel=7.2.0=pyha191276_1
@@ -328,10 +328,9 @@ dependencies:
       - pacmap==0.9.1
       - phenograph==1.5.7
       - pybind11==3.0.2
-      - scikit-misc
+      - scikit-misc==0.5.2
       - scikit-build==0.18.1
       - session-info==1.0.1
       - stdlib-list==0.12.0
       - topometry==1.0.2
-      - cellbender
-prefix: /home/user/miniconda3/envs/utricle-qc
+      - cellbender==0.3.0     # as in the paper image; cell calling itself uses cellbender.sif (0.3.2)

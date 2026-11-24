@@ -1,13 +1,17 @@
-#!/usr/bin/env
+#!/usr/bin/env bash
+# Build or pull the pipeline's container images into containers/ (run from the pipeline folder).
+# The paper runs used images built on 2026-03-31; their sha256 are recorded in each run's provenance.json.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
 
-# cellbender
+# CellBender 0.3.2 (cell calling)
 apptainer pull containers/cellbender.sif docker://us.gcr.io/broad-dsde-methods/cellbender:0.3.2
 
-# utricle qc
+# QC, outliers, TopOMetry
 apptainer build containers/utricle-qc.sif containers/utricle-qc.def
 
-# vaeda
+# vaeda (doublets)
 apptainer build containers/vaeda.sif containers/vaeda.def
 
-# r-clustering
+# R: scDblFinder, scSHC, clustree
 apptainer build containers/r-clustering.sif containers/r-clustering.def
