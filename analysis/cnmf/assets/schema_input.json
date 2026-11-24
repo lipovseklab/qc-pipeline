@@ -48,10 +48,10 @@
             },
             "run_name": {
                 "type": "string",
-                "pattern": "^\\S+$",
+                "pattern": "^[A-Za-z0-9_.-]+$",
                 "unique": true,
                 "description": "Run name. Default: cnmf_{metadata}_{subset}_{YYYYMMDD}, or cnmf_{counts name}_{YYYYMMDD}",
-                "errorMessage": "run_name must be unique and contain no spaces"
+                "errorMessage": "run_name must be unique and use only letters, digits, _, . and -"
             }
         },
         "required": ["counts"],

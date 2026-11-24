@@ -2,6 +2,7 @@
 # Run:  nextflow run lipovseklab/qc-pipeline -r <version> -profile <profile> -params-file qc.yaml
 step: qc
 outdir: results/2026-07-23_qc
+container_dir: /path/to/qc-pipeline/containers   # absolute path to the built .sif images (bin/helpers/setup-containers.sh)
 
 datasets:
   - name: alldata

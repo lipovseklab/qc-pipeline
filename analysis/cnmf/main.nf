@@ -38,6 +38,11 @@ def makeMeta(row) {
     // k values from the row (space or ; separated), else the --k_vals default
     def k_vals   = (k_str ?: params.k_vals).toString().trim().split(/[\s;]+/).collect { it as int }
 
+    // run and folder names go into shell commands: keep them to safe characters
+    def name = run_name ?: "cnmf_${tag}_${params.run_date}"
+    if( !(name ==~ /[\w.-]+/) || !(tag ==~ /[\w.-]+/) )
+        error "Run name '${name}' / sample '${tag}' may only use letters, digits, _, . and - (rename the counts file or set run_name)"
+
     return [
         tag      : tag,
         counts   : counts_f,
@@ -46,7 +51,7 @@ def makeMeta(row) {
         label    : label,
         hvgs     : hvgs ? file(hvgs) : null,
         k_vals   : k_vals,
-        run_name : run_name ?: "cnmf_${tag}_${params.run_date}",
+        run_name : name,
         n_iters  : n_iters,
         n_jobs   : k_vals.size() * n_iters,
         n_chunks : Math.ceil(k_vals.size() * n_iters / (params.stride as int)) as int
@@ -151,6 +156,8 @@ def runNameFor(sample) {
     def run_name  = params.run_name ?: (name_file.exists() ? name_file.text.trim() : null)
     if( !run_name )
         error "No run name: give --run_name, or check ${name_file} exists (is --outdir the run's results folder?)"
+    if( !(run_name ==~ /[\w.-]+/) )
+        error "Run name '${run_name}' may only use letters, digits, _, . and -"
     return run_name
 }
 

@@ -16,11 +16,13 @@ sc.settings.figdir = '.'
 
 def pca_umap_baseline(adata, npcs=40, savename=None):
 
-	# compute 100 pca components
-	sc.pp.pca(adata, layer="scaled", n_comps=100)
+	# compute up to 100 pca components (arpack needs fewer than min(cells, genes), so small subsets get fewer)
+	n_comps = min(100, adata.n_obs - 1, adata.n_vars - 1)
+	npcs = min(npcs, n_comps)
+	sc.pp.pca(adata, layer="scaled", n_comps=n_comps)
 
 	# plot components and save
-	sc.pl.pca_variance_ratio(adata, n_pcs=100, show=False, save=f'_{savename}.png')
+	sc.pl.pca_variance_ratio(adata, n_pcs=n_comps, show=False, save=f'_{savename}.png')
 	plt.close()
 	
 	# calculate pca-based neighbours

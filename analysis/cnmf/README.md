@@ -12,10 +12,12 @@ mkdir -p envs
 module load apptainer
 
 # pull container and move to envs subdirectory
-apptainer pull docker://quay.io/biocontainers/cnmf_1.7.1:pyhdfd78af_0 envs/cnmf_env.sif
+apptainer pull envs/cnmf_env.sif docker://quay.io/biocontainers/cnmf:1.7.1--pyhdfd78af_0
 
-# for running topometry on subset of data
-apptainer build envs/utricle-qc.sif envs/utricle-qc.def
+# for running topometry on subset of data: the QC pipeline's image. Build only that one at the repository root
+# (kept if ../../containers/utricle-qc.sif already exists), then copy it here
+../../bin/helpers/setup-containers.sh utricle-qc
+cp ../../containers/utricle-qc.sif envs/
 
 # for the downstream GEP analysis (scanpy, decoupler, seaborn, openpyxl)
 apptainer build envs/cnmf-analysis.sif envs/cnmf-analysis.def
@@ -82,8 +84,7 @@ nextflow run main.nf -profile ucl_myriad,test
 - `-resume` continues the **latest** run in this directory. Without it, a run starts from scratch. Every `nextflow` command that starts a run counts as the latest run, including `-preview` and test-profile runs, so a bare `-resume` after one of those finds nothing cached and reruns everything.
 - To continue a specific run, give its **session ID**, not its run name: `-resume 1f50da21-e19b-452b-ba34-87c375069c28`. `-resume` only takes `last` or a full session ID (this is how the launcher parses it in Nextflow 26.04): a run name is silently ignored, and the bare `-resume` resumes the latest run instead. Find the ID in the second-to-last column of `nextflow log` (for example `nextflow log | grep <run name>`); `nextflow log <run name> -f session` works too, but not while that session is running. A double dash (`--resume`) is a pipeline parameter and does nothing.
 - Do not resume a run while one of its SGE jobs is still running (`qstat`), or a second copy of that task starts in the same work directory.
-- `conf/base.config` (resources) is always loaded; `-profile ucl_myriad` adds the SGE executor and singularity settings.
-- `scripts/run_nextflow.sh` is an optional wrapper that loads Java, writes the Nextflow log to `logs/nextflow.log`, and always adds `-profile ucl_myriad` and `-resume`. It can also be submitted as a job (`qsub scripts/run_nextflow.sh --samplesheet samplesheet.csv`) if compute nodes are allowed to submit jobs.
+- `conf/base.config` (resources) is always loaded; `-profile ucl_myriad` adds the SGE executor and apptainer settings.
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -129,7 +130,7 @@ nextflow run main.nf -profile ucl_myriad --step refit_usage --outdir results_202
 One-off setup, on a machine with internet access (a login node). Compute nodes may not have any, so the analysis reads these files instead of downloading them:
 
 ```bash
-singularity exec envs/cnmf-analysis.sif python bin/fetch_resources.py    # writes assets/resources/ (GMT + CollecTRI network)
+apptainer exec envs/cnmf-analysis.sif python bin/fetch_resources.py    # writes assets/resources/ (GMT + CollecTRI network)
 ```
 
 ```bash
@@ -192,65 +193,9 @@ bin/                    subset.py, topometry.py, cluster_compare.py, clustree.R,
 conf/                   base.config (resources), ucl_myriad.config, test.config
 modules/local/          one process per step
 envs/                   container images and definitions
-scripts/                run_nextflow.sh (optional wrapper) and the older qsub scripts
 ```
 
 Resources (cpus, total memory, wallclock) are set per label in `conf/base.config`. The Myriad profile divides memory by cpus for the per-core request. Change them there, not in the modules.
-
-## Running with qsub scripts (older route)
-
-The scripts in `scripts/` still work. Each one is a job on its own, or `pipeline.sh` chains them.
-
-## Order of jobs
-
-### Subsetting & clustering data (optional)
-
-1. `subset.sh`
-
-2. `topometry.sh`
-
-### Core cNMF functions
-
-1. `prep.sh`
-
-2. `factorize.sh`
-   - Standalone, override the array size: `qsub -t 1-N:10 scripts/factorize.sh ...`, where N = number of k values x iterations (`pipeline.sh` does this for you). If tasks are killed at the wallclock limit, resubmit with the same command: `--skip-completed-runs` skips finished runs. Check with `qacct -j <jobid>` (`ru_wallclock`, `exit_status`).
-
-4. `combine_and_plot.sh`
-
-### After k plot inspection
-
-1. `consensus.sh`
-
-- Note: Only run one consensus step is run at a time to avoid re-writing the cache.
-
-### pipeline.sh
-
-`pipeline.sh` submits the whole chain as linked SGE jobs (`-hold_jid`). **Run from the `cnmf` directory.**
-
-Consensus is not included: inspect the k selection plot, then run `consensus.sh` separately.
-
-### Dry run (prints the qsub commands, submits nothing):
-
-```bash
-# with subsetting
-bash scripts/pipeline.sh -d -c anndatas/adata_raw.h5ad -m ctype -x HC -k 20 30 40 -i 200 -o results
-
-# without subsetting
-bash scripts/pipeline.sh -d -c anndatas/adata_raw.h5ad -g hvgs.csv -k 20 30 40 -i 200 -o results
-```
-
-### Submit:
-
-```bash
-# with subsetting: subset -> topometry -> prep -> factorize -> combine
-qsub scripts/pipeline.sh -c anndatas/adata_raw.h5ad -m ctype -x HC -k 20 30 40 -i 200 -o results
-
-# without subsetting: prep -> factorize -> combine (-g is required)
-qsub scripts/pipeline.sh -c anndatas/adata_raw.h5ad -g hvgs.csv -k 20 30 40 -i 200 -o results
-```
-
-Default run name is `cnmf_{tag}_{YYYYMMDD}` (tag is `{ctype}_{subset}` or the counts file name), unless `-n` is given. Outputs go in `results/{run name}/` unless `-o` is given.
 
 ## License
 

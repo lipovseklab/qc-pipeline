@@ -21,27 +21,42 @@ def git(List args) {
     }
 }
 
-// commit, tag and uncommitted (tracked) files of the pipeline code
+// commit, tag and uncommitted (tracked) files of the pipeline code.
+// `unknown` is set when git can't tell whether the code is clean: then the results can't be tied to a commit either.
 def codeState() {
     def commit = git(['rev-parse', 'HEAD'])
-    def changed = commit ? (git(['status', '--porcelain', '--untracked-files=no']) ?: '').readLines()*.trim().findAll() : []
+    def unknown = null
+    // a copy of the pipeline unpacked inside some other repository would resolve to that repository's commit
+    if( commit && git(['ls-files', '--error-unmatch', '--', workflow.scriptFile.name]) == null ) {
+        unknown = "${workflow.scriptFile.name} is not tracked by the git repository that holds ${projectDir}"
+        commit = null
+    }
+    def status = commit ? git(['status', '--porcelain', '--untracked-files=no']) : null
+    if( commit && status == null )
+        unknown = "`git status` failed in ${projectDir}"
     [
         commit   : commit ?: workflow.commitId,
-        revision : workflow.revision ?: git(['rev-parse', '--abbrev-ref', 'HEAD']),
+        revision : workflow.revision ?: (commit ? git(['rev-parse', '--abbrev-ref', 'HEAD']) : null),
         describe : commit ? git(['describe', '--tags', '--always', '--dirty']) : null,
-        remote   : workflow.repository ?: git(['config', '--get', 'remote.origin.url']),
-        changed  : changed,
+        remote   : workflow.repository ?: (commit ? git(['config', '--get', 'remote.origin.url']) : null),
+        changed  : status ? status.readLines()*.trim().findAll() : [],
+        unknown  : unknown,
     ]
 }
 
 def checkCodeState() {
     def code = codeState()
+    // clean means: a commit that git itself confirmed (workflow.commitId alone is not checked against the files)
+    def confirmed = code.commit && !code.unknown && code.describe != null
     if( workflow.stubRun || params.allow_dirty ) {
-        if( params.allow_dirty && !workflow.stubRun && (code.changed || !code.commit) )
-            log.warn "Running with --allow_dirty: these results can't be tied to a commit (edited files are listed in provenance.json)"
+        if( params.allow_dirty && !workflow.stubRun && (code.changed || !confirmed) )
+            log.warn "Running with --allow_dirty: these results can't be tied to a commit (${code.unknown ?: 'edited files are listed in provenance.json'})"
         return code
     }
-    if( !code.commit )
+    if( code.unknown )
+        error "The state of the pipeline code can't be checked: ${code.unknown}.\n" +
+              "Run from git (`nextflow run lipovseklab/qc-pipeline -r <tag>`), or add --allow_dirty true for a test run."
+    if( !confirmed )
         error "The pipeline code in ${projectDir} is not a git checkout, so these results could not be tied to a commit.\n" +
               "Run from git (`nextflow run lipovseklab/qc-pipeline -r <tag>`), or add --allow_dirty true for a test run."
     if( code.changed )
@@ -55,9 +70,13 @@ def imageSha256(path) {
     def f = path.toFile()
     def cache = new File("${f}.sha256")
     def key = "${f.length()} ${f.lastModified()}"
-    if( cache.exists() ) {
-        def lines = cache.text.readLines()
-        if( lines.size() == 2 && lines[0] == key ) return lines[1]
+    try {
+        if( cache.exists() ) {
+            def lines = cache.text.readLines()
+            if( lines.size() == 2 && lines[0] == key ) return lines[1]
+        }
+    } catch( Exception e ) {
+        log.debug "Can't read ${cache.name}, hashing the image instead: ${e.message}"
     }
     def proc = ['sha256sum', f.toString()].execute()
     def out = new StringBuilder()
@@ -106,7 +125,14 @@ def writeProvenance(Map code, Map dataset, Map extra = [:]) {
 // container images in params.container_dir with their sha256 (skipped for stub runs)
 def containerHashes() {
     if( workflow.stubRun ) return [:]
-    def dir = file(params.container_dir)
-    if( !dir.exists() ) return [:]
-    dir.listFiles().findAll { f -> f.name.endsWith('.sif') }.sort { f -> f.name }.collectEntries { f -> [(f.name): imageSha256(f)] }
+    // the hashes are extra information: never let them stop the final provenance.json being written
+    def dir = null
+    try {
+        dir = file(params.container_dir)
+        if( !dir.exists() ) return [:]
+        return dir.listFiles().findAll { f -> f.name.endsWith('.sif') }.sort { f -> f.name }.collectEntries { f -> [(f.name): imageSha256(f)] }
+    } catch( Exception e ) {
+        log.warn "Couldn't hash the container images in ${dir ?: params.container_dir}: ${e.message}"
+        return [error: e.message]
+    }
 }
