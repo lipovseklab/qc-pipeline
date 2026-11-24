@@ -1,0 +1,45 @@
+# Checks every pull request (and main after each merge):
+#   lint  – `nextflow lint`: syntax and common mistakes in all .nf and .config files
+#   test  – nf-test stub runs (tests/main.nf.test): wiring, parameter checks and outputs, without containers or data
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NXF_VER: 25.10.4
+  NFT_VER: 0.9.5
+  NXF_ANSI_LOG: false
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - name: Install Nextflow
+        run: curl -fsSL https://get.nextflow.io | bash && sudo mv nextflow /usr/local/bin/
+      - name: nextflow lint
+        # analysis/ (cNMF) is linted once it is wired into the main pipeline (B3)
+        run: nextflow lint . -exclude nf-test.config -exclude analysis -o concise
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - name: Install Nextflow
+        run: curl -fsSL https://get.nextflow.io | bash && sudo mv nextflow /usr/local/bin/
+      - name: Install nf-test
+        run: curl -fsSL https://get.nf-test.com | bash -s $NFT_VER && sudo mv nf-test /usr/local/bin/
+      - name: nf-test (stub runs)
+        run: nf-test test tests/ --ci --verbose

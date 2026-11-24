@@ -34,6 +34,15 @@ Outputs go to `<outdir>/qc/...` and `<outdir>/outliers/...`.
 The run file is checked before anything starts: misspelt settings, wrong types (`skip_scSHC: "yes"`),
 missing required settings and missing input files all stop the run with a message saying what to fix.
 
+### Provenance: every result is tied to a commit
+
+- The pipeline **stops if its code has uncommitted changes**, so results can always be traced back to the exact code.
+  Running from GitHub with `-r <tag>` always passes. For a test run from an edited local copy, add `--allow_dirty true`.
+- Each run writes `<outdir>/pipeline_info/provenance.json`: commit, tag (`git describe`), the edited files
+  (if `--allow_dirty`), run name and session ID, command line, profile, Nextflow version, the dataset settings
+  after defaults, all parameters, the final status, and the sha256 of each container image in `container_dir`
+  (cached next to the image as `<image>.sif.sha256`).
+
 ## Dataset settings
 
 One entry under `datasets:` (one dataset per run for now).
@@ -79,8 +88,11 @@ Profiles hold machine settings only; dataset settings always go in `run.yaml`.
 ## Testing
 
 ```bash
-nf-test test            # stub runs of qc, outliers and all
+nf-test test                                   # stub runs: qc (with and without CellBender), outliers, all
+nextflow lint . -exclude nf-test.config        # syntax check
 ```
+
+Stub runs need no containers or data. Both checks run on every pull request (`.github/workflows/ci.yml`).
 
 ## License
 

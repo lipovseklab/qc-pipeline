@@ -19,4 +19,9 @@ process join_adatas {
     """
     join_adatas.py --raw-adata ${raw_adata} ${cellbender_paths}
     """
+
+    stub:
+    """
+    touch adata_cellbender_filtered.h5ad adata_cellbender_unfiltered.h5ad
+    """
 }

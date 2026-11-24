@@ -29,4 +29,9 @@ process run_cellbender {
             ${droplets_arg} \
             ${cells_arg}
     """
+
+    stub:
+    """
+    touch cellbender_${batch}.h5 cellbender_${batch}_report.html cellbender_${batch}.log cellbender_${batch}.pdf cellbender_${batch}_metrics.csv
+    """
 }
