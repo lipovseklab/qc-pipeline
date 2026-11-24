@@ -90,7 +90,8 @@ the same gene order, and writes `<run_name>.usages.k_<k>.dt_<threshold>.consensu
 One-off setup on a machine with internet access (compute nodes may have none), in a clone of this repo:
 
 ```bash
-apptainer exec containers/cnmf-analysis.sif python bin/fetch_resources.py   # writes assets/resources/ (GMT + CollecTRI)
+# the image is in your container_dir: ~/Scratch/containers on Myriad, containers/ for a default build
+apptainer exec <container_dir>/cnmf-analysis.sif python bin/fetch_resources.py   # writes assets/resources/ (GMT + CollecTRI)
 ```
 
 `nextflow run lipovseklab/qc-pipeline` runs its own cached copy of the code, which does not have these files, so
