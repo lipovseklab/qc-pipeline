@@ -17,6 +17,7 @@
 include { validateParameters } from 'plugin/nf-schema'
 include { QC }       from './workflows/qc.nf'
 include { OUTLIERS } from './workflows/outliers.nf'
+include { checkCodeState; writeProvenance; containerHashes } from './subworkflows/local/provenance/main.nf'
 
 // Settings every dataset gets unless run.yaml says otherwise. Keep in sync with nextflow_schema.json.
 def datasetDefaults() { [
@@ -48,10 +49,10 @@ def datasetSettings() {
         if( absent )
             error "Not found: " + absent.collect { "${it} = ${ds[it]}" }.join('; ')
     }
-    def missing = { List keys -> keys.findAll { ds[it] == null } }
     def need = ['name', 'adata', 'celltype_csv'] + (params.step in ['outliers', 'all'] ? ['clusters'] : [])
-    if( missing(need) )
-        error "Dataset '${ds.name ?: '?'}' is missing: ${missing(need).join(', ')} (step: ${params.step})"
+    def missing = need.findAll { k -> ds[k] == null }
+    if( missing )
+        error "Dataset '${ds.name ?: '?'}' is missing: ${missing.join(', ')} (step: ${params.step})"
     if( params.step == 'outliers' && !ds.qc_stats )
         log.warn "No qc_stats folder given: the filtering summary will only show the outlier stage"
     return ds
@@ -61,7 +62,20 @@ workflow {
 
     main:
     validateParameters()
+    def code = checkCodeState()     // stops on uncommitted pipeline code unless --allow_dirty
     def ds = datasetSettings()
+    writeProvenance(code, ds, [status: 'running'])
+    def wf = workflow                 // `workflow` and `params` are not visible inside the handler closure
+    def container_dir = params.container_dir
+    wf.onComplete {
+        writeProvenance(code, ds, [
+            status    : wf.success ? 'completed' : 'failed',
+            completed : wf.complete?.toString(),
+            duration  : wf.duration?.toString(),
+            error     : wf.errorMessage,
+            containers: [dir: container_dir, sha256: containerHashes()],
+        ])
+    }
     def qc       = params.step in ['qc', 'all']
     def outliers = params.step in ['outliers', 'all']
 

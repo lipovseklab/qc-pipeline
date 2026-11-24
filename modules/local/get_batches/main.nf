@@ -18,4 +18,9 @@ process get_batches {
     """
     get_batches.py --adata ${raw_adata} --batch-col ${batch_col}
     """
+
+    stub:
+    """
+    printf 'stub_batch_1\nstub_batch_2\n'
+    """
 }

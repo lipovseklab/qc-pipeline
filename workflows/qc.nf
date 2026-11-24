@@ -69,7 +69,7 @@ workflow QC {
     if (!ds.skip_cellbender) {
         ch_batches = get_batches(raw_adata, ds.batch)
                         .splitText()
-                        .map { it.trim() }
+                        .map { b -> b.trim() }
     }
 
     // split adata by batch (one process per batch)
@@ -87,7 +87,7 @@ workflow QC {
             ? channel.fromPath(ds.cellbender_csv)
                 .splitCsv(header: true)
                 .map { row -> tuple(row.batch, row.total_droplets_included ?: null, row.expected_cells ?: null) }
-            : split_adata.out.split_path.map { batch, path -> tuple(batch, null, null) }
+            : split_adata.out.split_path.map { batch, _path -> tuple(batch, null, null) }
     }
 
     // run cellbender — (batch, split.h5ad, total_droplets, expected_cells)
@@ -106,7 +106,7 @@ workflow QC {
     if (!ds.skip_cellbender) {
         join_adatas(
             raw_adata,
-            ch_for_join.map { batch, split, cb -> cb }.collect()
+            ch_for_join.map { _batch, _split, cb -> cb }.collect()
         )
     }
 

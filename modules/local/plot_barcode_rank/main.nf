@@ -18,4 +18,9 @@ process plot_barcode_rank {
     """
     plot_barcode_rank.py --adata ${raw_adata} --batch ${batch}
     """
+
+    stub:
+    """
+    touch plot_barcode_rank_${batch}.png
+    """
 }
