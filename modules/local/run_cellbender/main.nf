@@ -5,7 +5,7 @@
  */
 process run_cellbender {
 
-    container "${projectDir}/containers/cellbender.sif"
+    container "${params.container_dir}/cellbender.sif"
 
     input :
     tuple val(batch), path(split_path), val(total_droplets_included), val(expected_cells)

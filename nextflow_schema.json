@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/lipovsek-lab/qc-pipeline/main/nextflow_schema.json",
-  "title": "lipovsek-lab/qc-pipeline pipeline parameters",
+  "$id": "https://raw.githubusercontent.com/lipovseklab/qc-pipeline/main/nextflow_schema.json",
+  "title": "lipovseklab/qc-pipeline pipeline parameters",
   "description": "QC pipeline for mouse utricle single-cell data: cell calling, doublet detection, minimal filtering, dimensionality reduction, clustering and outlier removal.",
   "type": "object",
   "$defs": {
@@ -89,13 +89,26 @@
           "format": "directory-path",
           "default": "results",
           "description": "Output directory where results are published."
+        },
+        "container_dir": {
+          "type": "string",
+          "format": "directory-path",
+          "fa_icon": "fas fa-box",
+          "description": "Folder containing the apptainer images (utricle-qc.sif, r-clustering.sif, vaeda.sif, cellbender.sif).",
+          "help_text": "The images are not stored in git. Defaults to <pipeline>/containers; set per machine via a profile or --container_dir."
         }
       }
     }
   },
   "allOf": [
-    { "$ref": "#/$defs/qc_pipeline_options" },
-    { "$ref": "#/$defs/outlier_removal_options" },
-    { "$ref": "#/$defs/generic_options" }
+    {
+      "$ref": "#/$defs/qc_pipeline_options"
+    },
+    {
+      "$ref": "#/$defs/outlier_removal_options"
+    },
+    {
+      "$ref": "#/$defs/generic_options"
+    }
   ]
 }

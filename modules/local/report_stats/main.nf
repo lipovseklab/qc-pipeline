@@ -2,7 +2,7 @@
 
 process report_stats {
 
-    container "${projectDir}/containers/utricle-qc.sif"
+    container "${params.container_dir}/utricle-qc.sif"
 
     input:
     path adata
