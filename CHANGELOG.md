@@ -4,8 +4,9 @@
 
 ### `Fixed`
 
-- Test data: `test/adata_test.h5ad` is now synthetic (random counts from `test/make_test_data.py`); it
-  replaces a subset of real counts. `test/generate_test_from_raw.py` is removed.
+- Test data: `test/adata_test.h5ad` is now built by `test/make_test_data.py` from a public Parse Biosciences mouse lymph
+  node nuclei dataset (CC BY 4.0) plus simulated empty droplets; `test/celltype_test.csv` lists lymph node markers.
+  `test/generate_test_from_raw.py` is removed.
 - run.yaml checks: blank required settings count as missing; dataset `name` may only use letters, digits, `_`, `.`
   and `-`; text settings may not contain spaces or line breaks; a misspelt top-level setting (e.g. `outdri`) now stops the run.
 - Provenance guard: a copy of the pipeline that isn't tracked by the git repository around it, or a failed
