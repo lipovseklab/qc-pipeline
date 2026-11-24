@@ -47,8 +47,17 @@ def fetch(download_dir):
     for name, expected in FILES.items():
         path = download_dir / name
         if not path.exists():
+            # download to a temporary name and rename only after the checksum matches,
+            # so an interrupted download is retried on the next run
+            tmp = path.with_suffix(path.suffix + '.part')
             print(f'downloading {BASE + name}')
-            urllib.request.urlretrieve(BASE + name, path)
+            try:
+                urllib.request.urlretrieve(BASE + name, tmp)  # noqa: S310 (fixed https URL)
+                if sha256(tmp) != expected:
+                    raise SystemExit(f'{BASE + name}: sha256 does not match the pinned source file')
+                tmp.replace(path)
+            finally:
+                tmp.unlink(missing_ok=True)
         if sha256(path) != expected:
             raise SystemExit(f'{path}: sha256 does not match the pinned source file')
     return download_dir
