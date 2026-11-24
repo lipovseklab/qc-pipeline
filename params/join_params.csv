@@ -1,4 +1,0 @@
-batch,split_h5ad,cellbender_h5
-P3,/path/to/project/qualitycontrol/nextflow/results/anndatas/cellbender/adata_group_P3.h5,/path/to/project/qualitycontrol/nextflow/results/anndatas/cellbender/cellbender_P3.h5
-P5,/path/to/project/qualitycontrol/nextflow/results/anndatas/cellbender/adata_group_P5.h5,/path/to/project/qualitycontrol/nextflow/results/anndatas/cellbender/cellbender_P5.h5
-B1,/path/to/project/qualitycontrol/nextflow/results/anndatas/cellbender/adata_group_P5.h5,/path/to/project/qualitycontrol/nextflow/results/anndatas/cellbender/cellbender_B1.h5

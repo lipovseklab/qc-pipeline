@@ -14,11 +14,6 @@ From: mambaorg/micromamba
 %post
     apt-get update && apt-get install -y procps
 
-    # Disable SSL verification on WSL2 (OpenSSL 3.5.x TLS compatibility issue)
-    if grep -qi "microsoft" /proc/version 2>/dev/null; then
-        micromamba config set ssl_verify false
-    fi
-
     CONDA_OVERRIDE_CUDA=12.9 micromamba create -q -y -f /opt/env.yml -p /opt/env
 
     micromamba clean -aqy
