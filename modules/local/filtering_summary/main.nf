@@ -16,4 +16,9 @@ process filtering_summary {
     """
     filtering_summary.py ${csv_list} ${batch_arg}
     """
+
+    stub:
+    """
+    touch plt_filter_stub.png
+    """
 }

@@ -1,7 +1,7 @@
 .nextflow*
 work/
 data/
-results/
+results*/
 .DS_Store
 testing/
 testing*
@@ -13,14 +13,15 @@ __pycache__/
 .nf-test/
 .nf-test.log
 
-# conf: keep only the test, myriad, and base config files
+# conf: keep only the test, ucl_myriad, and base config files (dataset settings live in run.yaml files, not here)
 conf/*
 !conf/test.config
-!conf/myriad.config
+!conf/ucl_myriad.config
 !conf/base.config
 
 # containers: keep only the .def build recipes, not the built .sif images
 containers/*.sif
+containers/*.sif.sha256
 
 # test: exclude the extra tiny/dev h5ad not part of the two required test files
 test/adata_test_tiny.h5ad

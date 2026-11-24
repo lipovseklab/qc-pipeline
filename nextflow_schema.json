@@ -5,78 +5,90 @@
   "description": "QC pipeline for mouse utricle single-cell data: cell calling, doublet detection, minimal filtering, dimensionality reduction, clustering and outlier removal.",
   "type": "object",
   "$defs": {
-    "qc_pipeline_options": {
-      "title": "QC pipeline options (main.nf)",
+    "run_options": {
+      "title": "Run options",
       "type": "object",
+      "fa_icon": "fas fa-play",
+      "required": [
+        "step",
+        "datasets"
+      ],
+      "description": "What to run, on which dataset. Put these in a run.yaml and pass it with -params-file.",
       "properties": {
-        "raw_adata": {
+        "step": {
           "type": "string",
-          "format": "file-path",
-          "description": "Absolute path to the raw AnnData (.h5ad) file. Should contain all cells and all genes if running CellBender."
+          "enum": [
+            "qc",
+            "outliers",
+            "all"
+          ],
+          "description": "qc, outliers (outlier removal on a qc output), or all (qc then outliers)."
         },
-        "batch": {
-          "type": "string",
-          "description": "Name of the batch ID column in adata.obs."
-        },
-        "celltype_csv": {
-          "type": "string",
-          "format": "file-path",
-          "description": "CSV file used for simple marker-based cell typing."
-        },
-        "metadata": {
-          "type": "string",
-          "description": "obs column used for QC/embedding plot colouring during dimensionality reduction."
-        },
-        "skip_cellbender": {
-          "type": "boolean",
-          "default": true,
-          "description": "Skip CellBender ambient-RNA/cell-calling correction (set false only when raw_adata contains all droplets, not just called cells)."
-        },
-        "skip_scSHC": {
-          "type": "boolean",
-          "default": false,
-          "description": "Skip scSHC clustering (memory intensive)."
-        },
-        "cellbender_csv": {
-          "type": "string",
-          "format": "file-path",
-          "description": "Optional CSV with per-batch CellBender settings (columns: batch, total_droplets_included, expected_cells). Leave unset to let CellBender estimate all values automatically."
-        },
-        "join_csv": {
-          "type": "string",
-          "format": "file-path",
-          "description": "Optional CSV to join adatas after CellBender, as an alternative entry point to the workflow."
-        }
-      }
-    },
-    "outlier_removal_options": {
-      "title": "Outlier removal options (workflows/outlier_removal.nf)",
-      "type": "object",
-      "properties": {
-        "adata": {
-          "type": "string",
-          "format": "file-path",
-          "description": "AnnData (.h5ad) produced by a prior qc_pipeline run, to filter outliers from."
-        },
-        "clusters": {
-          "type": "string",
-          "description": "obs column holding cluster labels used for outlier detection."
-        },
-        "descriptor": {
-          "type": "string",
-          "description": "Short label used in output file names for this run (e.g. 'alldata', 'postnatal')."
-        },
-        "csv_paths": {
-          "type": "string",
-          "description": "Glob of prior report_stats CSVs to fold into the filtering summary plot."
-        },
-        "batch_csv_paths": {
-          "type": "string",
-          "description": "Optional glob of prior per-batch report_stats CSVs to fold into the filtering summary plot."
-        },
-        "doublets": {
-          "type": "string",
-          "description": "obs column holding doublet calls used for outlier detection."
+        "datasets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "description": "The dataset to process (exactly one entry for now).",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "adata",
+              "celltype_csv"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Short dataset name (no spaces); used in output file names, e.g. alldata."
+              },
+              "adata": {
+                "type": "string",
+                "format": "file-path",
+                "pattern": "\\.h5ad$",
+                "description": "Input AnnData. step qc/all: raw (cell-called or, with skip_cellbender: false, all droplets). step outliers: adata_doublets.h5ad from a qc run."
+              },
+              "batch": {
+                "type": "string",
+                "description": "obs column with the batch (default: plate)."
+              },
+              "sample": {
+                "type": "string",
+                "description": "obs column used to colour QC plots (default: sample)."
+              },
+              "celltype_csv": {
+                "type": "string",
+                "format": "file-path",
+                "description": "Marker table for simple cell typing (required)."
+              },
+              "skip_cellbender": {
+                "type": "boolean",
+                "description": "qc: skip CellBender cell calling because the adata is already cell-called (default: true)."
+              },
+              "cellbender_csv": {
+                "type": "string",
+                "format": "file-path",
+                "description": "qc: optional per-batch CellBender settings (columns: batch, total_droplets_included, expected_cells)."
+              },
+              "skip_scSHC": {
+                "type": "boolean",
+                "description": "Skip scSHC clustering, which needs ~128 GB (default: false)."
+              },
+              "clusters": {
+                "type": "string",
+                "description": "outliers: obs column with the clusters MADs are computed in, e.g. topo_clusters_ms_res0.4 (required for outliers/all)."
+              },
+              "doublet_column": {
+                "type": "string",
+                "description": "outliers: obs column with doublet calls 'doublet'/'singlet' (default: scDblFinder_calls)."
+              },
+              "qc_stats": {
+                "type": "string",
+                "format": "directory-path",
+                "description": "outliers alone: the qc run's reports/stats folder, so the filtering summary covers all stages. Not needed with step all."
+              }
+            }
+          }
         }
       }
     },
@@ -96,16 +108,26 @@
           "fa_icon": "fas fa-box",
           "description": "Folder containing the apptainer images (utricle-qc.sif, r-clustering.sif, vaeda.sif, cellbender.sif).",
           "help_text": "The images are not stored in git. Defaults to <pipeline>/containers; set per machine via a profile or --container_dir."
+        },
+        "allow_dirty": {
+          "type": "boolean",
+          "default": false,
+          "fa_icon": "fas fa-exclamation-triangle",
+          "description": "Run even if the pipeline code has uncommitted changes (test runs only).",
+          "help_text": "By default the pipeline stops when its code has uncommitted changes, so every result can be tied to a commit. The setting and the edited files are recorded in <outdir>/pipeline_info/provenance.json."
+        },
+        "trace_report_suffix": {
+          "type": "string",
+          "fa_icon": "far calendar",
+          "hidden": true,
+          "description": "Suffix for the execution report files in pipeline_info/ (default: date and time of the run)."
         }
       }
     }
   },
   "allOf": [
     {
-      "$ref": "#/$defs/qc_pipeline_options"
-    },
-    {
-      "$ref": "#/$defs/outlier_removal_options"
+      "$ref": "#/$defs/run_options"
     },
     {
       "$ref": "#/$defs/generic_options"
