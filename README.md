@@ -95,7 +95,17 @@ so check gene symbols match your naming.
 Profiles hold machine settings only; dataset settings always go in `run.yaml`.
 
 - `test` — small public dataset (`test/adata_test.h5ad`: 600 Parse mouse lymph node nuclei plus simulated empty droplets, CC BY 4.0; see `test/README.md`), step `all`; used by `nf-test`.
-- `ucl_myriad` — UCL Myriad SGE cluster; images in `~/Scratch/containers` unless `run.yaml` sets `container_dir`.
+- `ucl_myriad` — UCL Myriad on its new operating system and Slurm scheduler (log in to `myriad-ng.rc.ucl.ac.uk`;
+  the old SGE half is being retired). Images in `~/Scratch/containers` unless `run.yaml` sets `container_dir`.
+  Nextflow needs Java 17 or later and the system Java is 8, so load it first, then run Nextflow from a login node
+  inside `tmux` or `screen` so it survives a dropped connection:
+  ```bash
+  module load openjdk/21.0.3_9/gcc-12.3.0-kx7sucd
+  tmux new -s qc
+  nextflow run lipovseklab/qc-pipeline -r <version> -profile ucl_myriad -params-file run.yaml
+  ```
+  CellBender jobs go to the `gpu` partition with `--gres=gpu:1`; the other steps get memory and time sized from the
+  paper runs (`conf/ucl_myriad.config`).
 
 ## Testing
 
