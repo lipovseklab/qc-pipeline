@@ -45,6 +45,11 @@ def datasetSettings() {
     if( unknown )
         error "Unknown dataset setting(s) in run.yaml: ${unknown.join(', ')}. Allowed: name, adata, cnmf, ${datasetDefaults().keySet().join(', ')}"
     def ds = datasetDefaults() + params.datasets[0]
+    // relative paths are taken from the launch folder; tasks need absolute ones
+    for( k in ['adata', 'celltype_csv', 'cellbender_csv', 'qc_stats'] ) {
+        if( ds[k] instanceof CharSequence && !ds[k].toString().trim().isEmpty() && !workflow.stubRun )
+            ds[k] = file(ds[k].toString()).toAbsolutePath().toString()
+    }
     if( ds.cnmf != null && !(ds.cnmf instanceof Map) )
         error "Dataset setting cnmf must be a block of settings (got '${ds.cnmf}')"
     // types (nf-schema can't check list entries here, see nextflow.config `validation`); the cnmf block is checked in cnmfRuns

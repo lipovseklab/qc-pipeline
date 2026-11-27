@@ -107,13 +107,13 @@ Profiles hold machine settings only; dataset settings always go in `run.yaml`.
   nextflow run lipovseklab/qc-pipeline -r <version> -profile ucl_myriad -params-file run.yaml
   ```
   The address can land on different login nodes, so note the node's name (`hostname`) to reattach to `tmux` later.
-  CellBender jobs go to the `gpu` partition with `--gres=gpu:1`; the other steps get memory and time sized from the
+  CellBender jobs go to the `gpu` partition with `--gres=gpu:1,tmpfs:20G` (it needs temporary space for its checkpoint); the other steps get memory and time sized from the
   paper runs (`conf/ucl_myriad.config`). Options that depend on your account (e.g. a QOS that 1-core jobs need) go
   in your own `~/.nextflow/config`, e.g. `process.clusterOptions = { task.cpus == 1 ? '--qos=<name>' : '' }`.
-  That reaches every step except CellBender, whose `--gres=gpu:1` in the profile replaces it (and the profile loads
+  That reaches every step except CellBender, whose `clusterOptions` in the profile replaces it (and the profile loads
   after `~/.nextflow/config`). If CellBender jobs need an account option too, put it in a file given with `-c` (or
   `nextflow.config` in the launch folder), repeating the GPU request:
-  `process { withName: run_cellbender { clusterOptions = '--gres=gpu:1 --qos=<name>' } }`.
+  `process { withName: run_cellbender { clusterOptions = '--gres=gpu:1,tmpfs:20G --qos=<name>' } }`.
 
 ## Testing
 
