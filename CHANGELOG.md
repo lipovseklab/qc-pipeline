@@ -9,6 +9,10 @@
   right). The subset, TopOMetry, counts and analysis scripts now store names and text columns (including `.raw`) as
   plain strings when they read their input (`bin/plain_strings.py`), and the refit step stops if cNMF's own usages
   differ from it (`refit_usage.py --min_r`, default 0.99).
+- `ucl_myriad`: CellBender jobs ask for 20 GB of job temporary space (`--gres=gpu:1,tmpfs:20G`); with Myriad's
+  default 100 MB, saving the checkpoint failed ("file write failed"). Tested on a Myriad GPU node with the test data.
+- Relative `adata`, `celltype_csv`, `cellbender_csv` and `qc_stats` paths in run.yaml are taken from the launch folder
+  (tasks failed with "Not a valid path value").
 - Test data: `test/adata_test.h5ad` is now built by `test/make_test_data.py` from a public Parse Biosciences mouse lymph
   node nuclei dataset (CC BY 4.0) plus simulated empty droplets; `test/celltype_test.csv` lists lymph node markers.
   `test/generate_test_from_raw.py` is removed.
