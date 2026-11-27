@@ -16,7 +16,8 @@ from scipy.cluster.hierarchy import leaves_list, linkage
 
 from .io import gep_columns, gep_number
 from .panels import plot_enrichment, plot_gene, plot_usage
-from .style import (DOUBLE_COLUMN, MM, SINGLE_COLUMN, age_palette, categorical_palette, point_size, usage_cmap)
+from .style import (DOUBLE_COLUMN, MM, SINGLE_COLUMN, age_palette, categorical_palette, point_size, projection_palette,
+                    usage_cmap)
 
 COLUMN_KINDS = ('usage', 'gene1', 'gene2', 'gene3', 'gobp', 'collectri')
 # Figure layouts: which panels go in which figure
@@ -72,14 +73,16 @@ def stored_palette(adata: ad.AnnData, col: str) -> Optional[Dict[str, str]]:
     return dict(zip(cats, colours))
 
 
-def group_palettes(adata: ad.AnnData, age_col: str, cluster_col: str, other_cols: Sequence[str] = ()) -> Dict[str, Dict]:
+def group_palettes(adata: ad.AnnData, age_col: str, cluster_col: str, other_cols: Sequence[str] = (),
+                   basis: Optional[str] = None) -> Dict[str, Dict]:
     """Colour dictionaries for age, clusters and any other categorical column, also stored in
     `adata.uns['<column>_colors']` (scanpy's convention) so every figure, and any later notebook, shows the same colour
     for the same group.
 
     Colours already stored in the AnnData (e.g. the project's fixed cell type and cluster colours) are kept. Otherwise
     ages get seaborn's 'husl' over *all* age categories in age order, so an age has the same colour in every subset;
-    other columns get UCL colours that are all different (style.categorical_palette).
+    other columns get UCL colours that are all different, placed on the projection `basis` (if given) so that groups
+    touching there get the most different colours (style.projection_palette), else in group order.
     """
     palettes = {}
     for col in [age_col, cluster_col, *other_cols]:
@@ -90,6 +93,8 @@ def group_palettes(adata: ad.AnnData, age_col: str, cluster_col: str, other_cols
         if palette is None or not set(cats) <= set(palette):
             if col == age_col:
                 palette = age_palette([str(c) for c in _sorted_categories(adata.obs[col], keep_absent=True)])
+            elif basis is not None and (basis in adata.obsm or f'X_{basis}' in adata.obsm):
+                palette = projection_palette(adata, col, basis)
             else:
                 palette = categorical_palette(cats)
         palettes[col] = {c: palette[c] for c in cats}

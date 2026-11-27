@@ -120,7 +120,7 @@ def main():
 
     with stage('usage summaries'):
         other = [c for c in summary_cols if c not in (args.age, args.clusters)]
-        palettes = gl.group_palettes(adata, args.age, args.clusters, other)
+        palettes = gl.group_palettes(adata, args.age, args.clusters, other, basis=args.projection)
         gl.plot_usage_by_cluster(adata, args.clusters, palettes, args.usage_cutoff, figs / 'gep_usage_pct_by_cluster', formats)
         gl.plot_usage_by_age(adata, args.age, palettes, args.usage_cutoff, figs / 'gep_usage_pct_by_age', formats)
         gl.plot_usage_by_cluster_and_age(adata, args.clusters, args.age, palettes, args.usage_cutoff,

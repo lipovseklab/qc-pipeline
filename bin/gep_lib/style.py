@@ -1,13 +1,15 @@
 """Plot style: UCL colours, palettes with no repeated colours, and publication-ready matplotlib settings."""
 from __future__ import annotations
 
-import itertools
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable
 
 import matplotlib as mpl
 import numpy as np
 import scanpy as sc
 import seaborn as sb
+
+# palette maths shared with the QC cluster plots and our paper notebooks: bin/ucl_palette.py (bin/ is on sys.path)
+from ucl_palette import projection_palette, store_palette, ucl_palette  # noqa: F401
 
 # --- UCL colour scheme ------------------------------------------------------------------------------------------
 # Core
@@ -32,90 +34,10 @@ TEA = '#57b444'
 # Ordered so that neighbours in the list are easy to tell apart
 UCL_BASE = [BRIGHTPUR, ORA, TEA, BLU, FUS, HERITAGEBLU, DARKPUR, DARKORA, DARKTEA, DARKBLU, DARKFUS, MIDPUR, LIGHTPUR]
 
-MIN_LIGHTNESS = 20   # CIELAB L*: leave out near-black ...
-MAX_LIGHTNESS = 88   # ... and near-white shades (53 colours left)
 
 MM = 1 / 25.4                 # inches per millimetre
 SINGLE_COLUMN = 85 * MM       # figure widths used by most journals
 DOUBLE_COLUMN = 180 * MM
-
-
-# --- Colour maths -----------------------------------------------------------------------------------------------
-def _srgb_to_lab(rgb: np.ndarray) -> np.ndarray:
-    """Convert an (n, 3) array of sRGB values in 0-1 to CIELAB (D65), for measuring colour differences."""
-    rgb = np.asarray(rgb, dtype=float)
-    lin = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
-    m = np.array([[0.4124564, 0.3575761, 0.1804375],
-                  [0.2126729, 0.7151522, 0.0721750],
-                  [0.0193339, 0.1191920, 0.9503041]])
-    xyz = lin @ m.T / np.array([0.95047, 1.0, 1.08883])
-    f = np.where(xyz > 216 / 24389, np.cbrt(xyz), (24389 / 27 * xyz + 16) / 116)
-    return np.stack([116 * f[:, 1] - 16, 500 * (f[:, 0] - f[:, 1]), 200 * (f[:, 1] - f[:, 2])], axis=1)
-
-
-def _mix(colour: str, other: str, amount: float) -> str:
-    """Blend `colour` towards `other` by `amount` (0 = colour, 1 = other)."""
-    a = np.array(mpl.colors.to_rgb(colour))
-    b = np.array(mpl.colors.to_rgb(other))
-    return mpl.colors.to_hex(a * (1 - amount) + b * amount)
-
-
-# Colour-vision deficiency simulation (Machado, Oliveira & Fernandes 2009, severity 1.0), applied in linear RGB
-_CVD = {
-    'deuteranopia': np.array([[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]]),
-    'protanopia': np.array([[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]]),
-    'tritanopia': np.array([[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.303900]]),
-}
-
-
-def _cvd_lab(rgb: np.ndarray) -> list:
-    """CIELAB of (n, 3) sRGB colours as seen with normal vision and with each simulated colour-vision deficiency."""
-    lin = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
-    views = [rgb]
-    for m in _CVD.values():
-        sim = np.clip(lin @ m.T, 0, 1)
-        views.append(np.where(sim <= 0.0031308, 12.92 * sim, 1.055 * sim ** (1 / 2.4) - 0.055))
-    return [_srgb_to_lab(v) for v in views]
-
-
-def _ucl_pool() -> list:
-    """UCL colours plus lighter and darker versions, without the darkest and palest shades."""
-    pool = list(UCL_BASE)
-    for amount in (0.35, 0.6):
-        pool += [_mix(c, '#ffffff', amount) for c in UCL_BASE] + [_mix(c, '#000000', amount) for c in UCL_BASE]
-    pool = list(dict.fromkeys(pool))
-    lightness = _srgb_to_lab(np.array([mpl.colors.to_rgb(c) for c in pool]))[:, 0]
-    return [c for c, l in zip(pool, lightness) if MIN_LIGHTNESS <= l <= MAX_LIGHTNESS]
-
-
-def ucl_palette(n: int, min_distance: float = 12.0) -> list:
-    """`n` colours from the UCL scheme, all different, also for colour-blind readers.
-
-    The pool is the UCL colours plus lighter and darker versions of each, without near-black (reads as missing data,
-    can't hold a label) and near-white (vanishes on a white background): 53 colours. Colours are picked one at a time,
-    each the one whose smallest difference (in CIELAB) from those already chosen is largest, where a difference counts
-    as the smallest of normal vision and simulated deuteranopia, protanopia and tritanopia. Beyond ~11 colours no
-    palette stays distinct for colour-blind readers; label the groups as well.
-    """
-    pool = _ucl_pool()
-    if n > len(pool):
-        raise ValueError(f'Cannot make {n} distinct colours from the UCL pool ({len(pool)} available)')
-    views = _cvd_lab(np.array([mpl.colors.to_rgb(c) for c in pool]))
-
-    def distance_to(chosen):
-        return np.min([np.min(np.linalg.norm(v[:, None, :] - v[chosen][None, :, :], axis=2), axis=1) for v in views], axis=0)
-
-    chosen = [0]
-    while len(chosen) < n:
-        dist = distance_to(chosen)
-        dist[chosen] = -1
-        chosen.append(int(np.argmax(dist)))
-    if n > 1:
-        lab = views[0]
-        closest = min(np.linalg.norm(lab[i] - lab[j]) for i, j in itertools.combinations(chosen, 2))
-        if closest < min_distance:
-            print(f'WARNING: {n} colours requested; the closest two are only {closest:.1f} apart in CIELAB')
-    return [pool[i] for i in chosen]
 
 
 def categorical_palette(categories: Iterable[str]) -> Dict[str, str]:
