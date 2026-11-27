@@ -4,6 +4,11 @@
 
 ### `Fixed`
 
+- cNMF usages: when the input stored gene names in pandas' nullable `string` type, cNMF 1.7.1's `consensus` paired
+  genes in alphabetical order in its final usage refit, so `*.consensus.txt` usages were noise (the refit file was
+  right). The subset, TopOMetry, counts and analysis scripts now store names and text columns (including `.raw`) as
+  plain strings when they read their input (`bin/plain_strings.py`), `ANNDATA_ALLOW_WRITE_NULLABLE_STRINGS` is no
+  longer set, and the refit step stops if cNMF's own usages differ from it (`refit_usage.py --min_r`, default 0.99).
 - Test data: `test/adata_test.h5ad` is now built by `test/make_test_data.py` from a public Parse Biosciences mouse lymph
   node nuclei dataset (CC BY 4.0) plus simulated empty droplets; `test/celltype_test.csv` lists lymph node markers.
   `test/generate_test_from_raw.py` is removed.

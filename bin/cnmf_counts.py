@@ -9,6 +9,10 @@ Used for whole-dataset cNMF runs given an HVG list (other runs get their counts 
 import argparse
 
 import anndata as ad
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # bin/ modules, wherever this runs from
+from plain_strings import plain_strings, report
 import numpy as np
 import scipy.sparse as sp
 
@@ -28,6 +32,7 @@ def build_parser():
 def main():
     args = build_parser().parse_args()
     adata = ad.read_h5ad(args.adata)
+    report(args.adata, plain_strings(adata))
     if adata.raw is not None:
         counts, source = adata.raw.to_adata(), '.raw'
     elif 'counts' in adata.layers:

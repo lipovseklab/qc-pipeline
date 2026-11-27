@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))   # so `gep_lib` imports work wherever this is run from
 
 import anndata as ad
+from plain_strings import plain_strings, report
 import matplotlib
 import scanpy as sc
 matplotlib.use('Agg')
@@ -93,6 +94,7 @@ def main():
 
     with stage('load and merge'):
         adata = ad.read_h5ad(args.adata)
+        report(args.adata, plain_strings(adata))
         usage, scores = gl.load_gep_results(args.run_dir, args.run_name, args.k, args.threshold, args.usage_source)
         gl.merge_gep_results(adata, usage, scores, args.run_name, args.k, args.threshold, args.usage_source)
         geps = [gl.gep_number(c) for c in gl.gep_columns(adata)]

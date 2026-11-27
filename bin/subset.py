@@ -5,6 +5,9 @@ import anndata as ad
 import argparse
 import pandas as pd
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # bin/ modules, wherever this runs from
+from plain_strings import plain_strings, report
 
 def build_parser():
 	
@@ -51,6 +54,7 @@ def main():
 	
 	# read adata
 	adata = ad.read_h5ad(args.counts)
+	report(args.counts, plain_strings(adata))
 
 	# subset by obs; the value arrives as text, so compare as a number when the column is numeric
 	column = adata.obs[args.metadata]
