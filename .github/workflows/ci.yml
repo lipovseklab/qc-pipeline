@@ -28,8 +28,7 @@ jobs:
       - name: Install Nextflow
         run: curl -fsSL https://get.nextflow.io | bash && sudo mv nextflow /usr/local/bin/
       - name: nextflow lint
-        # analysis/ (cNMF) is linted once it is wired into the main pipeline (B3)
-        run: nextflow lint . -exclude nf-test.config -exclude analysis -o concise
+        run: nextflow lint . -exclude nf-test.config -o concise
 
   test:
     runs-on: ubuntu-latest

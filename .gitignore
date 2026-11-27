@@ -25,3 +25,7 @@ containers/*.sif.sha256
 
 # test: exclude the extra tiny/dev h5ad not part of the two required test files
 test/adata_test_tiny.h5ad
+
+# reference files for the cNMF analysis step, downloaded by bin/fetch_resources.py
+assets/resources/*
+!assets/resources/.gitkeep
