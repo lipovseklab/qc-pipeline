@@ -106,8 +106,10 @@ Profiles hold machine settings only; dataset settings always go in `run.yaml`.
   tmux new -s qc
   nextflow run lipovseklab/qc-pipeline -r <version> -profile ucl_myriad -params-file run.yaml
   ```
+  The address can land on different login nodes, so note the node's name (`hostname`) to reattach to `tmux` later.
   CellBender jobs go to the `gpu` partition with `--gres=gpu:1`; the other steps get memory and time sized from the
-  paper runs (`conf/ucl_myriad.config`).
+  paper runs (`conf/ucl_myriad.config`). Options that depend on your account (e.g. a QOS that 1-core jobs need) go
+  in your own `~/.nextflow/config`, e.g. `process.clusterOptions = { task.cpus == 1 ? '--qos=<name>' : '' }`.
 
 ## Testing
 
