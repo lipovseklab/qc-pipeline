@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
+"""Add the cell types (and scSHC clusters) to the TopOMetry AnnData, plot the clusterings of TopOMetry's chosen latent
+space next to them, and write the input for the clustree plot (bin/clustree_series.R).
+
+Writes adata_clusters.h5ad, cluster_comparison_on_embedding.png, cluster_table.csv and clustree_series.txt.
+"""
 import argparse
 import os
+import sys
+from pathlib import Path
+
 import anndata as ad
-import scanpy as sc
 import pandas as pd
-import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # bin/ modules, wherever this runs from
+from cluster_series import plot_comparison, series_columns, series_for_basis, write_clustree_input
 
 
 def build_parser():
@@ -40,24 +46,16 @@ def main():
         adata.obs = adata.obs.join(ctype.predicted_celltype)
     adata.obs['predicted_celltype'] = adata.obs['predicted_celltype'].astype('category')
 
-    if 'ms_spectral' in adata.uns['basis']:
-        cluster_cols = [col for col in adata.obs.columns if col.startswith('topo_clusters_ms_')]
-    elif 'spectral' in adata.uns['basis']:
-        cluster_cols = [col for col in adata.obs.columns if col.startswith('topo_clusters_res_')]
-    else:
-        cluster_cols = [col for col in adata.obs.columns if col.startswith('pca_leiden_res')]
+    # the clusterings of the latent space TopOMetry chose (adata.uns['basis'])
+    series = series_for_basis(adata.uns['basis'])
+    cluster_cols = series_columns(adata.obs, series[1])
+    print(f"latent space chosen by topometry: {adata.uns['basis']} -> {series[0]} ({len(cluster_cols)} resolutions)")
+    if not cluster_cols:
+        raise SystemExit(f"No {series[1]}* columns in {args.adata} for latent space {adata.uns['basis']}")
 
-    sc.pl.embedding(
-        adata,
-        basis='projection',
-        color=['predicted_celltype'] + (['shc_clusters'] if 'shc_clusters' in adata.obs.columns else []) + cluster_cols,
-        legend_loc='on data',
-        legend_fontsize='xx-small',
-        frameon=False,
-        show=False,
-    )
-    plt.savefig('cluster_comparison_on_embedding.png')
-    plt.close()
+    colours = ['predicted_celltype'] + (['shc_clusters'] if 'shc_clusters' in adata.obs.columns else [])
+    plot_comparison(adata, colours, cluster_cols, 'projection', 'cluster_comparison_on_embedding.png')
+    write_clustree_input(adata, [series])
 
     adata.write('adata_clusters.h5ad')
 

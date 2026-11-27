@@ -144,7 +144,7 @@
           "type": "string",
           "format": "directory-path",
           "fa_icon": "fas fa-box",
-          "description": "Folder containing the apptainer images (utricle-qc.sif, r-clustering.sif, vaeda.sif, cellbender.sif; cNMF: cnmf_env.sif, cnmf-analysis.sif, clustree.sif).",
+          "description": "Folder containing the apptainer images (utricle-qc.sif, r-clustering.sif, vaeda.sif, cellbender.sif, clustree.sif; cNMF: cnmf_env.sif, cnmf-analysis.sif).",
           "help_text": "The images are not stored in git. Defaults to <pipeline>/containers; set per machine via a profile or --container_dir."
         },
         "allow_dirty": {

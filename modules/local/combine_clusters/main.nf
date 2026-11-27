@@ -12,6 +12,7 @@ process combine_clusters {
     output:
     path 'cluster_comparison_on_embedding.png', emit : plot
     path "adata_clusters.h5ad", emit : adata
+    tuple path('cluster_table.csv'), path('clustree_series.txt'), emit : clustree_input
 
     script:
     """
@@ -20,6 +21,8 @@ process combine_clusters {
 
     stub:
     """
+    printf 'cell,topo_clusters_ms_res0.2\nc1,0\n' > cluster_table.csv
+    printf 'topo_ms\ttopo_clusters_ms_res\tTopometry - multiscale latent space\n' > clustree_series.txt
     touch cluster_comparison_on_embedding.png
     touch adata_clusters.h5ad
     """

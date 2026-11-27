@@ -97,18 +97,15 @@ workflow OUTLIERS {
         'postqc'
     )
 
-    // clustree on topometry
-    clustree(
-        run_topometry.out.adata,
-        cell_typing.out.csv
-    )
-
     // cluster comparison plot
     combine_clusters(
         run_topometry.out.adata,
         scSHC_csv,
         cell_typing.out.csv
     )
+
+    // clustree of the same clusterings (combine_clusters writes its input table)
+    clustree(combine_clusters.out.clustree_input)
 
     emit:
     // outliers
