@@ -83,9 +83,10 @@ def main():
     # gene names in pandas' `string` type (cNMF then pairs genes in alphabetical order; docs/cnmf.md)
     own_file = run_dir / f'{args.name}.usages.k_{args.k}.dt_{dt}.consensus.txt'
     # cell IDs as text: numeric IDs, leading zeros and IDs such as 'NA' stay as written
-    own = pd.read_csv(own_file, sep='\t', index_col=0, dtype=str, keep_default_na=False)
+    id_col = pd.read_csv(own_file, sep='\t', nrows=0).columns[0]
+    own = pd.read_csv(own_file, sep='\t', index_col=0, dtype={id_col: str}, keep_default_na=False)
     own.columns = own.columns.astype(str)
-    own = own.loc[usage.index.astype(str), [str(c) for c in usage.columns]].astype(float).to_numpy()
+    own = own.loc[usage.index.astype(str), [str(c) for c in usage.columns]].to_numpy()
     same = pd.Series({gep: np.corrcoef(usage[gep].to_numpy(), own[:, j])[0, 1] for j, gep in enumerate(usage.columns)})
     print(f'r(refit usage, cNMF usage) per GEP: median {same.median():.3f}, min {same.min():.3f}')
     if args.min_r > 0 and not (same > args.min_r).all():
