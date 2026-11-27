@@ -4,6 +4,8 @@
 
 ### `Fixed`
 
+- cNMF analysis figures: age colours span all age categories (seaborn 'husl', in age order), not only the ages present,
+  so an age has the same colour in every subset.
 - cNMF usages: when the input stored gene names in pandas' nullable `string` type, cNMF 1.7.1's `consensus` paired
   genes in alphabetical order in its final usage refit, so `*.consensus.txt` usages were noise (the refit file was
   right). The subset, TopOMetry, counts and analysis scripts now store names and text columns (including `.raw`) as
@@ -35,6 +37,8 @@
 
 ### `Changed`
 
+- cNMF analysis figures keep colours already stored in the AnnData (`uns['<column>_colors']`, e.g. a project's fixed
+  cell type and cluster colours) instead of replacing them; new colours are made only for columns without them.
 - `ucl_myriad` profile: Myriad's new operating system and Slurm scheduler (`myriad-ng`) instead of SGE. QC and
   outlier steps get memory and time sized from the paper runs (Slurm's default is 1 GB per core), CellBender goes to
   the `gpu` partition with `--gres=gpu:1`, and steps without a time limit get 24 h. README: load Java 17+ on Myriad.
