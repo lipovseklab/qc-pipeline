@@ -72,7 +72,15 @@ def datasetSettings() {
         error "adata must be an .h5ad file (got ${ds.adata})"
     if( params.step == 'outliers' && !ds.qc_stats )
         log.warn "No qc_stats folder given: the filtering summary will only show the outlier stage"
-    return ds
+    // relative paths are taken from the launch folder (tasks need absolute ones); URIs such as s3:// stay as given.
+    // Done after the checks above, so they see the values as written in run.yaml (a launch folder may contain spaces)
+    if( workflow.stubRun )
+        return ds
+    return ds.collectEntries { k, v ->
+        def local = k in ['adata', 'celltype_csv', 'cellbender_csv', 'qc_stats'] && v instanceof CharSequence &&
+            !(v.toString() =~ /^[A-Za-z][A-Za-z0-9+.-]*:\/\//).find()
+        [k, local ? file(v.toString()).toAbsolutePath().toString() : v]
+    }
 }
 
 /*
