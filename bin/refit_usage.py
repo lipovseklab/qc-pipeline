@@ -37,7 +37,7 @@ def parse_args():
     p.add_argument('--threshold', type=float, required=True, help='local density threshold given to `cnmf consensus`')
     p.add_argument('--top_genes', type=int, default=10, help='top genes per GEP used for the sanity check')
     p.add_argument('--min_r', type=float, default=0.99,
-                   help="stop if any GEP's refit usage correlates below this with cNMF's own usage (0 = only report)")
+                   help="stop if any GEP's refit usage correlates below this with cNMF's own usage (0 or less: only report)")
     return p.parse_args()
 
 
@@ -78,12 +78,12 @@ def main():
     # check: cNMF's own usages should be the same as this refit. They differ when the run folder was prepared from
     # gene names in pandas' `string` type (cNMF then pairs genes in alphabetical order; docs/cnmf.md)
     own_file = run_dir / f'{args.name}.usages.k_{args.k}.dt_{dt}.consensus.txt'
-    own = pd.read_csv(own_file, sep='\t', index_col=0)
+    own = pd.read_csv(own_file, sep='\t', index_col=0, dtype=str)     # cell IDs as text (numeric IDs, leading zeros)
     own.columns = own.columns.astype(str)
-    own = own.loc[usage.index.astype(str), [str(c) for c in usage.columns]].to_numpy()
+    own = own.loc[usage.index.astype(str), [str(c) for c in usage.columns]].astype(float).to_numpy()
     same = pd.Series({gep: np.corrcoef(usage[gep].to_numpy(), own[:, j])[0, 1] for j, gep in enumerate(usage.columns)})
     print(f'r(refit usage, cNMF usage) per GEP: median {same.median():.3f}, min {same.min():.3f}')
-    if not (same > args.min_r).all():
+    if args.min_r > 0 and not (same > args.min_r).all():
         raise SystemExit(
             f'cNMF\'s own usages ({own_file.name}) differ from the refit (min r {same.min():.2f} < {args.min_r}). '
             f'The run folder was probably prepared before names were stored as plain strings: its *.consensus.txt '

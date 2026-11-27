@@ -90,12 +90,13 @@ data by position on different genes: `*.usages.k_*.consensus.txt` is noise, whil
 are fine. With plain names the result is correct.
 
 The pipeline therefore stores names and text columns as plain strings when the subset, TopOMetry, counts and
-analysis scripts read their input (`bin/plain_strings.py`), and no longer allows anndata to write the `string` type.
+analysis scripts read their input (`bin/plain_strings.py`).
 The `consensus` step still runs `bin/refit_usage.py` afterwards: it repeats the refit on plain arrays with cNMF's own
 function and settings, writes `<run_name>.usages.k_<k>.dt_<threshold>.consensus.refit.txt` next to cNMF's files, and
-**stops if cNMF's own usages differ from it** (any GEP with r < 0.99; `--min_r`). That happens for run folders
-prepared before this change: their `consensus.txt` usages are wrong and the `refit.txt` ones right, so rerun the
-`cnmf` step to rebuild the folder. It also prints how well each GEP's usage follows the mean expression of its top 10
+**stops if cNMF's own usages differ from it** (any GEP with r < 0.99; `--min_r`). That can happen for run folders
+prepared before this change from an input with `string` gene names (folders prepared from plain names are fine):
+their `consensus.txt` usages are wrong and the `refit.txt` ones right. To rebuild such a folder, rerun the `cnmf`
+step without `-resume`, or into a new `outdir`, so that `cnmf prepare` runs again. It also prints how well each GEP's usage follows the mean expression of its top 10
 genes (about 0.5–0.9 when right, about 0 when the genes are mispaired). The analysis reads the refitted file.
 
 ## Analysis

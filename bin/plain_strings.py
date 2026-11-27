@@ -13,33 +13,41 @@ def _is_nullable_string(dtype) -> bool:
     return isinstance(dtype, pd.StringDtype)
 
 
-def plain_strings(adata) -> list:
-    """Convert ``string``-typed obs/var names, columns and categories of ``adata`` to plain strings, in place.
+def _plain_frame(df, prefix: str) -> list:
+    """Convert a DataFrame's ``string`` index and columns in place; return what was converted."""
+    changed = []
+    if _is_nullable_string(df.index.dtype):
+        df.index = df.index.astype(object)
+        changed.append(f'{prefix}_names')
+    for col in df.columns:
+        dtype = df[col].dtype
+        if _is_nullable_string(dtype):
+            # categorical with plain-string categories: anndata writes it (also when every value is missing, which a
+            # plain object column of None cannot be) and reads missing values back as missing
+            values = df[col].astype(object).where(df[col].notna(), None)
+            df[col] = pd.Categorical(values, categories=pd.Index(sorted(values.dropna().unique()), dtype=object))
+            changed.append(f'{prefix}.{col}')
+        elif isinstance(dtype, pd.CategoricalDtype) and _is_nullable_string(dtype.categories.dtype):
+            df[col] = df[col].cat.rename_categories(dtype.categories.astype(object))
+            changed.append(f'{prefix}.{col}')
+    return changed
 
-    Returns the names of what was converted (empty if nothing was), e.g. ``['var_names', 'obs.sample']``.
+
+def plain_strings(adata) -> list:
+    """Convert ``string``-typed obs/var names, columns and categories of ``adata`` (and of ``.raw``) to plain strings,
+    in place. Returns the names of what was converted (empty if nothing was), e.g. ``['var_names', 'obs.sample']``.
     """
     changed = []
-    if adata.raw is not None:                       # .raw has its own gene names and var table
-        raw = adata.raw.to_adata()
-        raw_changed = [f'raw.{c}' for c in plain_strings(raw) if not c.startswith('obs')]
-        if raw_changed:
-            adata.raw = raw
-            changed += raw_changed
-    for axis in ('obs', 'var'):
-        names = getattr(adata, f'{axis}_names')
-        if _is_nullable_string(names.dtype):
-            setattr(adata, f'{axis}_names', names.astype(object))
-            changed.append(f'{axis}_names')
-        df = getattr(adata, axis)
-        for col in df.columns:
-            dtype = df[col].dtype
-            if _is_nullable_string(dtype):
-                df[col] = df[col].astype(object).where(df[col].notna(), None)
-                changed.append(f'{axis}.{col}')
-            elif isinstance(dtype, pd.CategoricalDtype) and _is_nullable_string(dtype.categories.dtype):
-                df[col] = df[col].cat.rename_categories(dtype.categories.astype(object))
-                changed.append(f'{axis}.{col}')
-    return changed
+    if adata.raw is not None:           # edits .raw's own var table in place, without copying its matrix
+        changed += [f'raw.{c}' for c in _plain_frame(adata.raw.var, 'var')]
+    obs_changed = _plain_frame(adata.obs, 'obs')
+    var_changed = _plain_frame(adata.var, 'var')
+    # obs_names/var_names setters keep AnnData's internal state consistent
+    if 'obs_names' in obs_changed:
+        adata.obs_names = adata.obs.index
+    if 'var_names' in var_changed:
+        adata.var_names = adata.var.index
+    return changed + obs_changed + var_changed
 
 
 def report(path, changed) -> None:
