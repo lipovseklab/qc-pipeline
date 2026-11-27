@@ -45,7 +45,9 @@ def load_gep_results(run_dir: str | Path, run_name: str, k: int, threshold: floa
                                     f'(cNMF 1.7.1 writes wrong usages), or use --usage_source file.')
     elif usage_source != 'file':
         raise ValueError(f"usage_source must be 'refit' or 'file', not {usage_source!r}")
-    usage = pd.read_csv(usage_file, sep='\t', index_col=0)
+    # cell IDs as text: numeric IDs, leading zeros and IDs such as 'NA' stay as written, so they match obs names
+    id_col = pd.read_csv(usage_file, sep='\t', nrows=0).columns[0]
+    usage = pd.read_csv(usage_file, sep='\t', index_col=0, dtype={id_col: str}, keep_default_na=False)
     usage = usage.div(usage.sum(axis=1), axis=0)
     usage.columns = [f'GEP_{int(c)}' for c in usage.columns]
 

@@ -10,6 +10,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sb
 import topo as tp
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # bin/ modules, wherever this runs from
+from plain_strings import plain_strings, report
 
 sc.settings.figdir = '.'
 
@@ -53,6 +57,7 @@ def run_topometry(adata_path, descriptor, npcs=30, cnmf_outputs=False, min_cells
         adata = adata.raw.to_adata()
     elif 'counts' in adata.layers:
         adata.X = adata.layers['counts']
+    report(adata_path, plain_strings(adata))
 
     # topometry computes its own HVGs, so it needs unnormalised counts -- check
     # the first few nonzero values are whole numbers (all cells/genes go

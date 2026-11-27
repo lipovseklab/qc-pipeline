@@ -77,13 +77,27 @@ ID (`nextflow log`), not its run name. Don't resume while one of its jobs is sti
 
 ## Usage refit
 
-cNMF 1.7.1 ends `consensus` with a refit of the usages, but pairs the spectra (genes sorted alphabetically) with the
-data (genes in HVG order) by position, so its `*.usages.k_*.consensus.txt` is wrong: the usages do not follow each
-GEP's top genes (spectra, gene scores and top genes are fine). The `consensus` step therefore runs
-`bin/refit_usage.py` afterwards, which repeats the refit with cNMF's own function and settings and both matrices in
-the same gene order, and writes `<run_name>.usages.k_<k>.dt_<threshold>.consensus.refit.txt` next to cNMF's files
-(which are left as they are). It prints how well each GEP's usage follows the mean expression of its top 10 genes
-(about 0.5–0.9 when right, about 0 for cNMF's own file). The analysis reads the refitted file.
+cNMF 1.7.1 ends `consensus` with a refit of the usages:
+
+```python
+spectra_tpm_rf = spectra_tpm.loc[:, hvgs].div(tpm_stats.loc[hvgs, '__std'], axis=1)
+```
+
+`spectra_tpm` carries the gene names of cNMF's `tpm.h5ad`, `tpm_stats` plain strings. If the input AnnData stores gene
+names in pandas' nullable `string` type (as files written with `anndata.settings.allow_write_nullable_strings` can),
+`tpm.h5ad` keeps them, pandas aligns the two by sorting the genes alphabetically, and the refit then pairs spectra and
+data by position on different genes: `*.usages.k_*.consensus.txt` is noise, while spectra, gene scores and top genes
+are fine. With plain names the result is correct.
+
+The pipeline therefore stores names and text columns as plain strings when the subset, TopOMetry, counts and
+analysis scripts read their input (`bin/plain_strings.py`).
+The `consensus` step still runs `bin/refit_usage.py` afterwards: it repeats the refit on plain arrays with cNMF's own
+function and settings, writes `<run_name>.usages.k_<k>.dt_<threshold>.consensus.refit.txt` next to cNMF's files, and
+**stops if cNMF's own usages differ from it** (any GEP with r < 0.99; `--min_r`). That can happen for run folders
+prepared before this change from an input with `string` gene names (folders prepared from plain names are fine):
+their `consensus.txt` usages are wrong and the `refit.txt` ones right. To rebuild such a folder, rerun the `cnmf`
+step without `-resume`, or into a new `outdir`, so that `cnmf prepare` runs again. It also prints how well each GEP's usage follows the mean expression of its top 10
+genes (about 0.5–0.9 when right, about 0 when the genes are mispaired). The analysis reads the refitted file.
 
 ## Analysis
 
