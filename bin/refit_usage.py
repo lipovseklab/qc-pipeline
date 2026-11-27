@@ -71,6 +71,10 @@ def main():
     h = pd.DataFrame((spectra.loc[:, genes].to_numpy() / std).astype(data.X.dtype), index=spectra.index, columns=genes)
     usage = pd.DataFrame(np.asarray(c.refit_usage(data.X, h)), index=tpm.obs_names, columns=spectra.index)
 
+    if usage.index.duplicated().any():
+        dups = usage.index[usage.index.duplicated()].unique()
+        raise SystemExit(f'{len(dups)} cell IDs occur more than once (e.g. {list(dups[:3])}); cNMF needs unique cell '
+                         f'IDs. Make them unique in the input AnnData (adata.obs_names_make_unique()) and rerun.')
     out = run_dir / f'{args.name}.usages.k_{args.k}.dt_{dt}.consensus.refit.txt'
     usage.to_csv(out, sep='\t')
     print(f'wrote {out} ({usage.shape[0]:,} cells x {usage.shape[1]} GEPs)')
@@ -78,7 +82,8 @@ def main():
     # check: cNMF's own usages should be the same as this refit. They differ when the run folder was prepared from
     # gene names in pandas' `string` type (cNMF then pairs genes in alphabetical order; docs/cnmf.md)
     own_file = run_dir / f'{args.name}.usages.k_{args.k}.dt_{dt}.consensus.txt'
-    own = pd.read_csv(own_file, sep='\t', index_col=0, dtype=str)     # cell IDs as text (numeric IDs, leading zeros)
+    # cell IDs as text: numeric IDs, leading zeros and IDs such as 'NA' stay as written
+    own = pd.read_csv(own_file, sep='\t', index_col=0, dtype=str, keep_default_na=False)
     own.columns = own.columns.astype(str)
     own = own.loc[usage.index.astype(str), [str(c) for c in usage.columns]].astype(float).to_numpy()
     same = pd.Series({gep: np.corrcoef(usage[gep].to_numpy(), own[:, j])[0, 1] for j, gep in enumerate(usage.columns)})
