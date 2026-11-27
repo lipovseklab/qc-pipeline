@@ -74,6 +74,8 @@ Run-wide settings: `outdir` (default `results`) and `container_dir` (folder with
 with `bin/helpers/setup-containers.sh` (in a clone of this repo; `--dest <folder>` puts them elsewhere, e.g.
 `--dest ~/Scratch/containers` on Myriad) and set `container_dir` to the **absolute** path of that folder in
 `run.yaml` unless the profile already points there. `nextflow run lipovseklab/qc-pipeline` runs its own cached copy of the code, which has no images.
+Copying built images to another machine works too; keep their timestamps (`rsync -t` or `scp -p`, with the
+`.sif.sha256` files), otherwise the first run re-hashes every image for `provenance.json` (a few minutes).
 
 **Cell calling.** The default `skip_cellbender: true` expects an already **cell-called** `adata` (nuclei with
 `cell_probability < 0.5` removed), e.g. from a separate CellBender run; no empty-droplet removal happens in this
