@@ -11,19 +11,13 @@ Writes, in the current directory:
     clustree_series.txt                            one tab-separated line per series: name, column prefix, plot title
 """
 import argparse
+import sys
+from pathlib import Path
 
 import anndata as ad
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import scanpy as sc
 
-# name, column prefix (followed by the resolution), title of the clustree plot
-SERIES = [
-    ('pca', 'pca_leiden_res', 'PCA-based latent space'),
-    ('topo', 'topo_clusters_res', 'Topometry - spectral latent space'),
-    ('topo_ms', 'topo_clusters_ms_res', 'Topometry - multiscale latent space'),
-]
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # bin/ modules, wherever this runs from
+from cluster_series import SERIES, plot_comparison, series_columns, write_clustree_input
 
 
 def build_parser():
@@ -47,30 +41,19 @@ def main():
     else:
         print(f'WARNING: {args.color} is not in adata.obs; plotting the clusterings only')
 
-    found, table_cols = [], []
+    found = []
     for name, prefix, title in SERIES:
-        # the series in order of resolution (topo_clusters_res0.2, ..., topo_clusters_res1.2)
-        cols = sorted((c for c in adata.obs.columns if c.startswith(prefix)), key=lambda c: float(c[len(prefix):]))
+        cols = series_columns(adata.obs, prefix)
         if not cols:
             print(f'{name}: no {prefix}* columns, skipped')
             continue
         print(f'{name}: {len(cols)} resolutions ({prefix}*)')
-
-        adata.obs[cols] = adata.obs[cols].astype(str).astype('category')
-        sc.pl.embedding(adata, basis=args.projection, color=colours + cols, legend_loc='on data',
-                        legend_fontsize='xx-small', frameon=False, show=False)
-        plt.savefig(f'cluster_comparison_on_embedding_{name}.png')
-        plt.close()
-
+        plot_comparison(adata, colours, cols, args.projection, f'cluster_comparison_on_embedding_{name}.png')
         found.append((name, prefix, title))
-        table_cols += cols
 
     if not found:
         raise SystemExit(f'None of the clustering series {[s[1] + "*" for s in SERIES]} are in {args.adata}')
-
-    adata.obs[table_cols].to_csv('cluster_table.csv')
-    with open('clustree_series.txt', 'w') as f:
-        f.writelines(f'{name}\t{prefix}\t{title}\n' for name, prefix, title in found)
+    write_clustree_input(adata, found)
 
 
 if __name__ == '__main__':

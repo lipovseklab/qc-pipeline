@@ -1,27 +1,28 @@
 #!/usr/bin/env nextflow
 
 /*
- * clustree plot
+ * clustree plot of the clusterings of TopOMetry's chosen latent space, from the cluster table that combine_clusters
+ * writes (the same R script draws the cNMF steps' clustree plots)
  */
 
- process clustree {
+process clustree {
 
-    container "${params.container_dir}/r-clustering.sif"
+    container "${params.container_dir}/clustree.sif"
 
     input:
-    path adata
-    path celltype_csv
+    tuple path(table), path(series)
 
     output:
     path "clustree.png", emit : plot
 
     script:
     """
-    clustree.R ${adata} ${celltype_csv}
+    clustree_series.R ${table} ${series}
+    mv clustree_*.png clustree.png
     """
 
     stub:
     """
     touch clustree.png
     """
- }
+}

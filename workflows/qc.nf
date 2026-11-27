@@ -168,12 +168,6 @@ workflow QC {
     /*
     * Clustering & cluster stability
     */
-    // clustree on topometry
-    clustree(
-        run_topometry.out.adata,
-        cell_typing.out.csv
-    )
-
     // scSHC clusters (optional — skip with --skip_scSHC)
     if (!ds.skip_scSHC) {
         scSHC(minimal_filter.out)
@@ -186,6 +180,9 @@ workflow QC {
         scSHC_csv,
         cell_typing.out.csv
     )
+
+    // clustree of the same clusterings (combine_clusters writes its input table)
+    clustree(combine_clusters.out.clustree_input)
 
     /*
     * Doublet analysis

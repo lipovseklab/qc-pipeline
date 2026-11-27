@@ -4,6 +4,9 @@
 
 ### `Fixed`
 
+- QC cluster plots for TopOMetry's spectral latent space (e.g. `spectral_scaffold`): `clustree` plotted the PCA
+  clusterings and the comparison plot showed none (it looked for `topo_clusters_res_*`). Both now use the series of
+  the chosen latent space. Multiscale spaces (as in the paper run) were not affected.
 - cNMF usages: when the input stored gene names in pandas' nullable `string` type, cNMF 1.7.1's `consensus` paired
   genes in alphabetical order in its final usage refit, so `*.consensus.txt` usages were noise (the refit file was
   right). The subset, TopOMetry, counts and analysis scripts now store names and text columns (including `.raw`) as
@@ -35,6 +38,11 @@
 
 ### `Changed`
 
+- Cluster plots: QC/outliers and the cNMF steps share one implementation (`bin/cluster_series.py`, `bin/clustree_series.R`
+  in `clustree.sif`); `bin/clustree.R` is removed. QC's `combine_clusters` writes the cluster table that the
+  `clustree` step plots, so `clustree` now runs after it. File names are unchanged. On the paper outlier run the
+  comparison plot is byte-identical and the clustree tree is the same, with clusters in numeric order (0, 1, 2, ...)
+  instead of text order (0, 1, 10, ...).
 - `ucl_myriad` profile: Myriad's new operating system and Slurm scheduler (`myriad-ng`) instead of SGE. QC and
   outlier steps get memory and time sized from the paper runs (Slurm's default is 1 GB per core), CellBender goes to
   the `gpu` partition with `--gres=gpu:1`, and steps without a time limit get 24 h. README: load Java 17+ on Myriad.
