@@ -7,6 +7,7 @@
 
 process clustree {
 
+    label 'clustree'
     container "${params.container_dir}/clustree.sif"
 
     input:
