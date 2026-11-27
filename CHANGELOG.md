@@ -26,6 +26,9 @@
 
 ### `Changed`
 
+- `ucl_myriad` profile: Myriad's new operating system and Slurm scheduler (`myriad-ng`) instead of SGE. QC and
+  outlier steps get memory and time sized from the paper runs (Slurm's default is 1 GB per core), CellBender goes to
+  the `gpu` partition with `--gres=gpu:1`, and steps without a time limit get 24 h. README: load Java 17+ on Myriad.
 - cNMF is part of the main pipeline: `step: cnmf`, `consensus` and `analysis`, driven by the same `run.yaml` as QC
   (a `cnmf:` block under the dataset, with one entry per subset; `examples/cnmf.yaml`, `docs/cnmf.md`). This replaces
   `analysis/cnmf/` with its own `main.nf`, configs, samplesheet and `--sample`/`--selected_k` flags: the chosen k,
