@@ -1,0 +1,28 @@
+# cNMF gene expression programs on an annotated dataset, in three runs on the same outdir:
+#   1. step: cnmf       factorize every subset for each k; look at <outdir>/cnmf/<tag>/<run_name>/*.k_selection.png
+#                       and <outdir>/cnmf/<tag>/clustering/clustree_*.png
+#   2. step: consensus  add selected_k (and threshold) to the subsets you have chosen, then run again
+#   3. step: analysis   add clusters (from the clustree plots), then run again
+# Keep this file with the run: it records every choice. See docs/cnmf.md.
+step: cnmf
+outdir: results/cnmf_2026-11-24
+container_dir: /path/to/qc-pipeline/containers   # absolute path to the built .sif images (bin/helpers/setup-containers.sh)
+# step analysis: reference files from `python bin/fetch_resources.py` (docs/cnmf.md)
+gmt: /path/to/qc-pipeline/assets/resources/MOUSE_GO_bp_no_GO_iea_symbol.gmt
+collectri: /path/to/qc-pipeline/assets/resources/collectri_mouse.parquet
+
+datasets:
+  - name: alldata
+    adata: /path/to/adata_ctype.h5ad          # annotated adata with raw counts in .raw (or layers['counts'])
+    cnmf:
+      column: ctype                           # obs column the subsets are taken from
+      k: [20, 30, 40]                         # defaults for every subset ...
+      n_iters: 100
+      subsets:
+        - value: HC                           # ... overridden per subset where needed
+          k: [10, 15, 20]
+          # selected_k: 15                    # step consensus / analysis
+          # threshold: 0.1
+          # clusters: topo_clusters_ms_res0.6 # step analysis
+        - value: SC
+        - value: MES

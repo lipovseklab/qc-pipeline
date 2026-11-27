@@ -15,8 +15,11 @@ sc.settings.figdir = '.'
 
 
 def pca_umap_baseline(adata, npcs=40, savename=None):
-    sc.pp.pca(adata, layer="scaled", n_comps=100)
-    sc.pl.pca_variance_ratio(adata, n_pcs=100, show=False, save=f'_{savename}.png')
+    # up to 100 components (arpack needs fewer than min(cells, genes), so small subsets get fewer)
+    n_comps = min(100, adata.n_obs - 1, adata.n_vars - 1)
+    npcs = min(npcs, n_comps)
+    sc.pp.pca(adata, layer="scaled", n_comps=n_comps)
+    sc.pl.pca_variance_ratio(adata, n_pcs=n_comps, show=False, save=f'_{savename}.png')
     plt.close()
 
     sc.pp.neighbors(adata, n_pcs=npcs, use_rep='X_pca', metric='cosine', key_added='PCA')
@@ -41,7 +44,7 @@ def pca_umap_baseline(adata, npcs=40, savename=None):
     del adata.obsm['X_umap']
 
 
-def run_topometry(adata_path, descriptor, npcs=30):
+def run_topometry(adata_path, descriptor, npcs=30, cnmf_outputs=False, min_cells=3):
     # read adata
     adata = ad.read_h5ad(adata_path)
 
@@ -66,8 +69,18 @@ def run_topometry(adata_path, descriptor, npcs=30):
     # preprocess not to overwrite it
     adata.raw = adata.copy()
 
+    if cnmf_outputs:
+        # cNMF subsets: drop genes expressed in fewer than min_cells cells (.raw keeps all genes) -- the
+        # seurat_v3 HVG loess fit fails on very sparse subsets
+        sc.pp.filter_genes(adata, min_cells=min_cells)
+        print(f'{adata_path}: n_genes after filtering = {adata.n_vars:,}')
+
     # run standard pre-processing
     adata = tp.sc.preprocess(adata, save_to_raw=False)
+
+    if cnmf_outputs:
+        # the highly variable genes, for cnmf prepare --genes-file
+        pd.DataFrame(list(adata.var_names)).to_csv(f'hvgs_{descriptor}.csv', header=False, index=False)
 
     # generate the PCAxUMAP baseline
     pca_umap_baseline(adata, npcs=npcs, savename=descriptor)
@@ -167,15 +180,26 @@ def build_parser():
     p.add_argument('--adata', required=True)
     p.add_argument('--descriptor', required=True)
     p.add_argument('--metadata', default=None)
+    p.add_argument('--cnmf_outputs', action='store_true',
+                   help='for cNMF: filter genes in < --min_cells cells before HVG selection, and also write '
+                        'hvgs_<descriptor>.csv and counts_<descriptor>.h5ad (raw counts, genes in >= --min_cells cells)')
+    p.add_argument('--min_cells', type=int, default=3,
+                   help='with --cnmf_outputs: keep genes expressed in at least this many cells (default: 3)')
     return p
 
 
 def main():
     args = build_parser().parse_args()
 
-    adata, tg = run_topometry(args.adata, args.descriptor)
+    adata, tg = run_topometry(args.adata, args.descriptor, cnmf_outputs=args.cnmf_outputs, min_cells=args.min_cells)
     adata = find_best_embedding(adata, args.descriptor)
     plot_comparisons(adata, args.descriptor, args.metadata)
+
+    if args.cnmf_outputs:
+        # the full raw count matrix (genes in >= min_cells cells) for cnmf -- X of the topometry adata is scaled
+        counts = adata.raw.to_adata()
+        sc.pp.filter_genes(counts, min_cells=args.min_cells)
+        counts.write(f'counts_{args.descriptor}.h5ad')
 
     adata.write(f'adata_topometry_{args.descriptor}.h5ad')
     tp.save_topograph(tg, f'topometry_object_{args.descriptor}.pkl')
