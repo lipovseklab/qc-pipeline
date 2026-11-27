@@ -99,17 +99,21 @@ Profiles hold machine settings only; dataset settings always go in `run.yaml`.
 - `test` — small public dataset (`test/adata_test.h5ad`: 600 Parse mouse lymph node nuclei plus simulated empty droplets, CC BY 4.0; see `test/README.md`), step `all`; used by `nf-test`.
 - `ucl_myriad` — UCL Myriad on its new operating system and Slurm scheduler (log in to `myriad-ng.rc.ucl.ac.uk`;
   the old SGE half is being retired). Images in `~/Scratch/containers` unless `run.yaml` sets `container_dir`.
-  Nextflow needs Java 17 or later and the system Java is 8, so load it first, then run Nextflow from a login node
-  inside `tmux` or `screen` so it survives a dropped connection:
+  Run Nextflow from a login node inside `tmux` or `screen` so it survives a dropped connection. Nextflow needs Java
+  17 or later and the system Java is 8, so load it inside the session (a running tmux server keeps its old `PATH`):
   ```bash
-  module load openjdk/21.0.3_9/gcc-12.3.0-kx7sucd
   tmux new -s qc
+  module load openjdk/21.0.3_9/gcc-12.3.0-kx7sucd
   nextflow run lipovseklab/qc-pipeline -r <version> -profile ucl_myriad -params-file run.yaml
   ```
   The address can land on different login nodes, so note the node's name (`hostname`) to reattach to `tmux` later.
   CellBender jobs go to the `gpu` partition with `--gres=gpu:1`; the other steps get memory and time sized from the
   paper runs (`conf/ucl_myriad.config`). Options that depend on your account (e.g. a QOS that 1-core jobs need) go
   in your own `~/.nextflow/config`, e.g. `process.clusterOptions = { task.cpus == 1 ? '--qos=<name>' : '' }`.
+  That reaches every step except CellBender, whose `--gres=gpu:1` in the profile replaces it (and the profile loads
+  after `~/.nextflow/config`). If CellBender jobs need an account option too, put it in a file given with `-c` (or
+  `nextflow.config` in the launch folder), repeating the GPU request:
+  `process { withName: run_cellbender { clusterOptions = '--gres=gpu:1 --qos=<name>' } }`.
 
 ## Testing
 
