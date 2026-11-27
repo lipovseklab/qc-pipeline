@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Dict, List, Sequence
+from typing import Dict, List, Optional, Sequence
 
 import anndata as ad
 import matplotlib as mpl
@@ -16,7 +16,8 @@ from scipy.cluster.hierarchy import leaves_list, linkage
 
 from .io import gep_columns, gep_number
 from .panels import plot_enrichment, plot_gene, plot_usage
-from .style import (DOUBLE_COLUMN, MM, SINGLE_COLUMN, age_palette, categorical_palette, point_size, usage_cmap)
+from .style import (DOUBLE_COLUMN, MM, SINGLE_COLUMN, age_palette, categorical_palette, point_size, projection_palette,
+                    usage_cmap)
 
 COLUMN_KINDS = ('usage', 'gene1', 'gene2', 'gene3', 'gobp', 'collectri')
 # Figure layouts: which panels go in which figure
@@ -40,12 +41,14 @@ def save_figure(fig, path_base: Path, formats: Sequence[str]) -> List[Path]:
 _AGE = re.compile(r'^([EP])(\d+)$')   # embryonic (E14) before postnatal (P0, P4, P119)
 
 
-def _sorted_categories(values: pd.Series) -> list:
+def _sorted_categories(values: pd.Series, keep_absent: bool = False) -> list:
     """Categories in natural order: numbers as numbers (2 before 10), ages E14 < P0 < P4 < P119 chronologically,
-    anything else as stored (or alphabetical)."""
+    anything else as stored (or alphabetical). Categories no cell has are dropped (subsets keep the parent's list)
+    unless `keep_absent`."""
     cats = list(values.cat.categories) if hasattr(values, 'cat') else sorted(values.unique())
-    present = set(values.astype(str))          # drop categories that no cell has (subsets keep the parent's list)
-    cats = [c for c in cats if str(c) in present] or cats
+    if not keep_absent:
+        present = set(values.astype(str))
+        cats = [c for c in cats if str(c) in present] or cats
     try:
         return sorted(cats, key=float)
     except (TypeError, ValueError):
@@ -56,16 +59,45 @@ def _sorted_categories(values: pd.Series) -> list:
     return cats
 
 
-def group_palettes(adata: ad.AnnData, age_col: str, cluster_col: str, other_cols: Sequence[str] = ()) -> Dict[str, Dict]:
-    """Colour dictionaries for age (the notebook's husl colours, in age order), clusters and any other categorical column
-    (all colours different). Each palette is made once and also stored in `adata.uns['<column>_colors']` (scanpy's
-    convention), so every figure, and any later notebook, shows the same colour for the same group."""
+def stored_palette(adata: ad.AnnData, col: str) -> Optional[Dict[str, str]]:
+    """The colours already stored for a categorical column in `adata.uns['<col>_colors']` (scanpy's convention, one
+    colour per category in category order), or None if there are none or they don't match the categories."""
+    colours = adata.uns.get(f'{col}_colors')
+    values = adata.obs[col]
+    if colours is None or not hasattr(values, 'cat'):
+        return None
+    colours = [str(c) for c in colours]
+    cats = [str(c) for c in values.cat.categories]
+    if len(colours) != len(cats) or not all(mpl.colors.is_color_like(c) for c in colours):
+        return None
+    return dict(zip(cats, colours))
+
+
+def group_palettes(adata: ad.AnnData, age_col: str, cluster_col: str, other_cols: Sequence[str] = (),
+                   basis: Optional[str] = None) -> Dict[str, Dict]:
+    """Colour dictionaries for age, clusters and any other categorical column, also stored in
+    `adata.uns['<column>_colors']` (scanpy's convention) so every figure, and any later notebook, shows the same colour
+    for the same group.
+
+    Colours already stored in the AnnData (e.g. the project's fixed cell type and cluster colours) are kept. Otherwise
+    ages get seaborn's 'husl' over *all* age categories in age order, so an age has the same colour in every subset;
+    other columns get UCL colours that are all different, placed on the projection `basis` (if given) so that groups
+    touching there get the most different colours (style.projection_palette), else in group order.
+    """
     palettes = {}
     for col in [age_col, cluster_col, *other_cols]:
         if col in palettes or col not in adata.obs:
             continue
         cats = [str(c) for c in _sorted_categories(adata.obs[col])]
-        palettes[col] = age_palette(cats) if col == age_col else categorical_palette(cats)
+        palette = stored_palette(adata, col)
+        if palette is None or not set(cats) <= set(palette):
+            if col == age_col:
+                palette = age_palette([str(c) for c in _sorted_categories(adata.obs[col], keep_absent=True)])
+            elif basis is not None and (basis in adata.obsm or f'X_{basis}' in adata.obsm):
+                palette = projection_palette(adata, col, basis)
+            else:
+                palette = categorical_palette(cats)
+        palettes[col] = {c: palette[c] for c in cats}
         adata.obs[col] = pd.Categorical(adata.obs[col].astype(str), categories=cats)      # category order = colour order
         adata.uns[f'{col}_colors'] = [palettes[col][c] for c in cats]
     return palettes

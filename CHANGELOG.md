@@ -4,6 +4,8 @@
 
 ### `Fixed`
 
+- cNMF analysis figures: age colours span all age categories (seaborn 'husl', in age order), not only the ages present,
+  so an age has the same colour in every subset.
 - QC cluster plots for TopOMetry's spectral latent space (e.g. `spectral_scaffold`): `clustree` plotted the PCA
   clusterings and the comparison plot showed none (it looked for `topo_clusters_res_*`). Both now use the series of
   the chosen latent space. Multiscale spaces (as in the paper run) were not affected.
@@ -38,6 +40,12 @@
 
 ### `Changed`
 
+- cNMF analysis figures keep colours already stored in the AnnData (`uns['<column>_colors']`, e.g. a project's fixed
+  cell type and cluster colours) instead of replacing them; new colours are made only for columns without them.
+- New colours (for groups without stored ones) are UCL colours: the 13 core UCL colours first, in an order that stays
+  distinct for colour-blind readers, then tints and shades (no near-black or near-white; 54 in all), placed on the
+  projection so that groups that touch get the most different colours (`bin/ucl_palette.py`, shared with our paper
+  notebooks).
 - Cluster plots: QC/outliers and the cNMF steps share one implementation (`bin/cluster_series.py`, `bin/clustree_series.R`
   in `clustree.sif`); `bin/clustree.R` is removed. QC's `combine_clusters` writes the cluster table that the
   `clustree` step plots, so `clustree` now runs after it. File names are unchanged. On the paper outlier run the

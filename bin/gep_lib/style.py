@@ -1,13 +1,15 @@
 """Plot style: UCL colours, palettes with no repeated colours, and publication-ready matplotlib settings."""
 from __future__ import annotations
 
-import itertools
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable
 
 import matplotlib as mpl
 import numpy as np
 import scanpy as sc
 import seaborn as sb
+
+# palette maths shared with the QC cluster plots and our paper notebooks: bin/ucl_palette.py (bin/ is on sys.path)
+from ucl_palette import projection_palette, store_palette, ucl_palette  # noqa: F401
 
 # --- UCL colour scheme ------------------------------------------------------------------------------------------
 # Core
@@ -32,59 +34,10 @@ TEA = '#57b444'
 # Ordered so that neighbours in the list are easy to tell apart
 UCL_BASE = [BRIGHTPUR, ORA, TEA, BLU, FUS, HERITAGEBLU, DARKPUR, DARKORA, DARKTEA, DARKBLU, DARKFUS, MIDPUR, LIGHTPUR]
 
+
 MM = 1 / 25.4                 # inches per millimetre
 SINGLE_COLUMN = 85 * MM       # figure widths used by most journals
 DOUBLE_COLUMN = 180 * MM
-
-
-# --- Colour maths -----------------------------------------------------------------------------------------------
-def _srgb_to_lab(rgb: np.ndarray) -> np.ndarray:
-    """Convert an (n, 3) array of sRGB values in 0-1 to CIELAB (D65), for measuring colour differences."""
-    rgb = np.asarray(rgb, dtype=float)
-    lin = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
-    m = np.array([[0.4124564, 0.3575761, 0.1804375],
-                  [0.2126729, 0.7151522, 0.0721750],
-                  [0.0193339, 0.1191920, 0.9503041]])
-    xyz = lin @ m.T / np.array([0.95047, 1.0, 1.08883])
-    f = np.where(xyz > 216 / 24389, np.cbrt(xyz), (24389 / 27 * xyz + 16) / 116)
-    return np.stack([116 * f[:, 1] - 16, 500 * (f[:, 0] - f[:, 1]), 200 * (f[:, 1] - f[:, 2])], axis=1)
-
-
-def _mix(colour: str, other: str, amount: float) -> str:
-    """Blend `colour` towards `other` by `amount` (0 = colour, 1 = other)."""
-    a = np.array(mpl.colors.to_rgb(colour))
-    b = np.array(mpl.colors.to_rgb(other))
-    return mpl.colors.to_hex(a * (1 - amount) + b * amount)
-
-
-def ucl_palette(n: int, min_distance: float = 12.0) -> List[str]:
-    """Return `n` colours built from the UCL scheme, all different from each other.
-
-    The pool is the UCL colours plus lighter and darker versions of each. Colours are picked one at a time,
-    always taking the one furthest (in CIELAB) from those already chosen, so no two clusters share a colour.
-    A warning is printed if the closest pair is still closer than `min_distance` (a just-noticeable difference is ~2).
-    """
-    pool: List[str] = list(UCL_BASE)
-    for amount in (0.35, 0.6):
-        pool += [_mix(c, '#ffffff', amount) for c in UCL_BASE] + [_mix(c, '#000000', amount) for c in UCL_BASE]
-    pool = list(dict.fromkeys(pool))
-    lab = _srgb_to_lab(np.array([mpl.colors.to_rgb(c) for c in pool]))
-
-    chosen = [0]
-    while len(chosen) < min(n, len(pool)):
-        dist = np.min(np.linalg.norm(lab[:, None, :] - lab[chosen][None, :, :], axis=2), axis=1)
-        dist[chosen] = -1
-        chosen.append(int(np.argmax(dist)))
-
-    colours = [pool[i] for i in chosen]
-    if n > len(pool):
-        raise ValueError(f'Cannot make {n} distinct colours from the UCL pool ({len(pool)} available)')
-    if n > 1:
-        pairs = itertools.combinations(range(len(chosen)), 2)
-        closest = min(np.linalg.norm(lab[chosen[i]] - lab[chosen[j]]) for i, j in pairs)
-        if closest < min_distance:
-            print(f'WARNING: {n} colours requested; the closest two are only {closest:.1f} apart in CIELAB')
-    return colours
 
 
 def categorical_palette(categories: Iterable[str]) -> Dict[str, str]:

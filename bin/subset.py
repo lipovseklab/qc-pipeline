@@ -62,7 +62,14 @@ def main():
 	dtype = column.cat.categories.dtype if isinstance(column.dtype, pd.CategoricalDtype) else column.dtype
 	if pd.api.types.is_numeric_dtype(dtype):
 		value = pd.to_numeric(value)
-	adata = adata[column == value]
+	# keep every category of the parent (e.g. all ages, not only those in this subset), so colours made later cover
+	# the full list and a group has the same colour in every subset; stored colours (uns['<col>_colors']) stay aligned
+	# plain text columns become categories too (e.g. an age column stored as strings), so they keep every value
+	for col in adata.obs.columns:
+		if pd.api.types.infer_dtype(adata.obs[col], skipna=True) == 'string':
+			adata.obs[col] = adata.obs[col].astype('category')
+	with ad.settings.override(remove_unused_categories=False):
+		adata = adata[column == value].copy()
 
 	# write adata
 	adata.write(f'{outpath}/adata_{args.metadata}_{args.label or args.subset}.h5ad')
