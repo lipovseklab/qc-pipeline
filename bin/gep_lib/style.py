@@ -32,6 +32,8 @@ TEA = '#57b444'
 # Ordered so that neighbours in the list are easy to tell apart
 UCL_BASE = [BRIGHTPUR, ORA, TEA, BLU, FUS, HERITAGEBLU, DARKPUR, DARKORA, DARKTEA, DARKBLU, DARKFUS, MIDPUR, LIGHTPUR]
 
+MIN_LIGHTNESS = 20            # CIELAB L*: ucl_palette leaves out darker shades (leaves 55 colours)
+
 MM = 1 / 25.4                 # inches per millimetre
 SINGLE_COLUMN = 85 * MM       # figure widths used by most journals
 DOUBLE_COLUMN = 180 * MM
@@ -60,7 +62,8 @@ def _mix(colour: str, other: str, amount: float) -> str:
 def ucl_palette(n: int, min_distance: float = 12.0) -> List[str]:
     """Return `n` colours built from the UCL scheme, all different from each other.
 
-    The pool is the UCL colours plus lighter and darker versions of each. Colours are picked one at a time,
+    The pool is the UCL colours plus lighter and darker versions of each, without the darkest (near-black reads as
+    missing data and can't hold a label). Colours are picked one at a time,
     always taking the one furthest (in CIELAB) from those already chosen, so no two clusters share a colour.
     A warning is printed if the closest pair is still closer than `min_distance` (a just-noticeable difference is ~2).
     """
@@ -68,6 +71,8 @@ def ucl_palette(n: int, min_distance: float = 12.0) -> List[str]:
     for amount in (0.35, 0.6):
         pool += [_mix(c, '#ffffff', amount) for c in UCL_BASE] + [_mix(c, '#000000', amount) for c in UCL_BASE]
     pool = list(dict.fromkeys(pool))
+    # drop the darkest shades (CIELAB lightness < 20): near-black reads as missing data and can't hold a label
+    pool = [c for c in pool if _srgb_to_lab(np.array([mpl.colors.to_rgb(c)]))[0, 0] >= MIN_LIGHTNESS]
     lab = _srgb_to_lab(np.array([mpl.colors.to_rgb(c) for c in pool]))
 
     chosen = [0]
